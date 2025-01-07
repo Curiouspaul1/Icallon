@@ -1,7 +1,11 @@
+import AppLayout from "../../layouts/app-layout";
+
 const CreateGame = () => {
   return (
-    <div>create game</div>
-  )
-}
+    <AppLayout>
+      <div className="">create game</div>
+    </AppLayout>
+  );
+};
 
-export default CreateGame
+export default CreateGame;
