@@ -4,6 +4,7 @@ from flask_socketio import (
     leave_room, send
 )
 
+import messages as MSG
 from extensions import ioclient, session
 from utils import (
     genRoomId,
@@ -16,7 +17,10 @@ from utils import (
     get_player_turn,
     store_sid,
     remove_sid,
-    get_sid
+    get_players,
+    get_sid,
+    get_used_letters,
+    cross_letter
 )
 
 
@@ -65,7 +69,7 @@ def join(data):
 
 
 @ioclient.on('create')
-def new_room(data):
+def new_room():
     username = session['user_id']
     roomID = genRoomId()
 
@@ -77,10 +81,53 @@ def new_room(data):
     # store player details
     addToRoom(roomID, username)
     map_player_to_room(username, roomID)
+    emit('game_code', roomID)
 
 
 @ioclient.on('start')
-def start_game(room_id):
-    player = get_player_turn()
+def start_game(data):
+    room_id = data['room_id']
+    player = get_player_turn(room_id)
+    all_players = get_players(room_id)
+
+    if len(all_players) < 2:
+        emit('cant_start_game', MSG.LOW_PLAYER_COUNT)
+
+    used_letters = get_used_letters(room_id)
+
     client_id = get_sid(player)
-    ioclient.emit('player_turn', to=client_id)
+    ioclient.emit('game_started', all_players, to=room_id)
+
+    ioclient.emit(
+        'private_player_turn',
+        {'disabledLetters': used_letters},
+        to=client_id
+    )
+
+    ioclient.emit('public_player_turn', session['user_id'])
+
+
+@ioclient.on('letter_selected')
+def letter_selected(data):
+    letter = data['letter']
+    room_id = data['room_id']
+
+    cross_letter(room_id, letter)
+
+    ioclient.emit('letter_chosen', to=room_id)
+
+
+@ioclient.on('next_player_turn')
+def next_player_turn(data):
+    room_id = data['room_id']
+    player = get_player_turn(room_id)
+    used_letters = get_used_letters(room_id)
+
+    client_id = get_sid(player)
+    ioclient.emit(
+        'private_player_turn',
+        {'disabledLetters': used_letters},
+        to=client_id
+    )
+
+    ioclient.emit('public_player_turn', session['user_id'])

@@ -73,12 +73,12 @@ def genRoomId():
 
 
 def writeUpdate(obj: dict, filename: str) -> None:
-    with lock.acquire_write():
-        try:
-            with open(filename, 'w') as _file:
-                json.dump(obj, _file, indent=4)
-        finally:
-            lock.release_write()
+    lock.acquire_write()
+    try:
+        with open(filename, 'w') as _file:
+            json.dump(obj, _file, indent=4)
+    finally:
+        lock.release_write()
 
 
 def getFile(filename: str) -> dict:
@@ -90,13 +90,10 @@ def getFile(filename: str) -> dict:
     finally:
         lock.release_read()
 
-print(getFile('rooms.json'))
-time.sleep(3)
-lock.release_write()
-lock.release_read()
 
 def addToRoom(room_id: str, player: str) -> None:
     rooms = getFile('rooms.json')
+    print('before', rooms)
     if room_id in rooms:
         rooms[room_id]['players'].append(player)
         rooms[room_id]['player_to_pos'][player] = rooms[room_id]['pos']
@@ -104,6 +101,7 @@ def addToRoom(room_id: str, player: str) -> None:
         rooms[room_id]['pos'] += 1
         rooms[room_id]['last_interaction'] = time.time()
 
+        print(rooms)
         writeUpdate(rooms, 'rooms.json')
 
 
@@ -118,6 +116,12 @@ def indexRoom(room_id):
     }
 
     writeUpdate(rooms, 'rooms.json')
+
+
+def get_players(room_id):
+    rooms = getFile('rooms.json')
+    if room_id in rooms:
+        return rooms[room_id]['players']
 
 
 def removeFromRoom(room_id: str, player: str) -> None:
@@ -165,10 +169,10 @@ def get_player_turn(room_id: str) -> str:
         ptr = room['ptr']
         player = players[ptr]
 
-        if room['ptr'] < len(room['players']) - 1:
-            room['ptr'] += 1
+        if room['ptr'] == len(room['players']) - 1:
+            room['ptr'] = 0
         else:
-            room['ptr'] = 0  # round robin
+            room['ptr'] += 1  # round robin
 
         writeUpdate(rooms, 'rooms.json')
 
@@ -195,3 +199,19 @@ def remove_sid(player: str) -> None:
         player_to_sids.pop(player)
 
         writeUpdate(player_to_sids, 'player_to_sid.json')
+
+
+def cross_letter(room_id: str, letter: str) -> None:
+    rooms = getFile('rooms.json')
+    if room_id in rooms:
+        room = rooms[room_id]
+        idx = letter_to_idx(letter)
+        room['letters'].append(idx)
+
+        writeUpdate(rooms, 'rooms.json')
+
+
+def get_used_letters(room_id: str) -> [str]:
+    rooms = getFile('rooms.json')
+    if room_id in rooms:
+        return rooms[room_id]['letters']

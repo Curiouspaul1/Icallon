@@ -1,0 +1,1 @@
+LOW_PLAYER_COUNT = "You must have two or more players including yourself to play💅"
