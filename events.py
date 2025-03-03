@@ -64,8 +64,9 @@ def join(data):
     addToRoom(room, username)
     map_player_to_room(username, room)
 
-    print(session['user_id'])
-    send(username + ' has entered the room.', to=room)
+    all_players = get_players(room)
+
+    emit('player_joined', all_players, to=room)
 
 
 @ioclient.on('create')
@@ -121,6 +122,7 @@ def letter_selected(data):
 def next_player_turn(data):
     room_id = data['room_id']
     player = get_player_turn(room_id)
+    print("====THE ===", player, "======")
     used_letters = get_used_letters(room_id)
 
     client_id = get_sid(player)
