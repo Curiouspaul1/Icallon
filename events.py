@@ -1,3 +1,5 @@
+import time
+
 from flask import request
 from flask_socketio import (
     emit, join_room,
@@ -13,13 +15,13 @@ from utils import (
     get_player_room,
     map_player_to_room,
     indexRoom,
-    parse_event_data,
     get_player_turn,
     store_sid,
     remove_sid,
     get_players,
     get_sid,
     get_used_letters,
+    score_player_attempt,
     cross_letter
 )
 
@@ -122,7 +124,6 @@ def letter_selected(data):
 def next_player_turn(data):
     room_id = data['room_id']
     player = get_player_turn(room_id)
-    print("====THE ===", player, "======")
     used_letters = get_used_letters(room_id)
 
     client_id = get_sid(player)
@@ -133,3 +134,19 @@ def next_player_turn(data):
     )
 
     ioclient.emit('public_player_turn', player)
+
+
+@ioclient.on('player_answer')
+def get_player_score(data):
+    player = session['user_id']
+    print(f"marking {player}'s answers : {data['answers']}")
+    resp = score_player_attempt(
+        player, data['room_id'],
+        data['answers']
+    )
+
+    if resp:
+        # emit round-results
+        ioclient.emit('round_result', resp, room=data['room_id'])
+        time.sleep(10)
+        next_player_turn({'room_id': data['room_id']})

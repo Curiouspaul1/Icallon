@@ -1,42 +1,31 @@
 import time
 import json
+import nltk
 import string
 import random
 from functools import wraps
 from collections import defaultdict
 
+from geopy import Nominatim
+from nltk.corpus import words
+from names_dataset import NameDataset
+
 from read_writer import ReadWriteLock
 
-# import nltk
-# from nltk.corpus import names
-# from nltk.corpus import words
 
-# nltk.download('names')
-# nltk.download("words")
+nd = NameDataset()
+try:
+    word_list = set(words.words())
+except LookupError:
+    nltk.download("words")
+    word_list = set(words.words())
 
-# word_list = set(words.words())
-# print(len(word_list))
-
-# def is_valid_word(word):
-#     return word.lower() in word_list
-
-# print(is_valid_word("lion"))   # True
-# print(is_valid_word("zzzz"))   # False
-
-# male_names = set(names.words('male.txt'))
-# female_names = set(names.words('female.txt'))
-
-# print(len(male_names))
-# print(len(female_names))
-
-# def is_name(word):
-#     return word in male_names or word in female_names
-
-# print(is_name("Olamide"))  # True
-# print(is_name("Banana"))  # False
+geolocator = Nominatim(user_agent="Icallon")
 
 
 lock = ReadWriteLock()
+
+# TODO: Use classes and OOP to write more cohesive workflow
 
 
 def create_letter_defaultdict(default_value):
@@ -110,9 +99,12 @@ def indexRoom(room_id):
     rooms[room_id] = {
         'ptr': 0,
         'pos': 0,
+        'curr_ans_count': 0,
         'players': [],
+        'letters': [],
         'player_to_pos': {},
-        'letters': []
+        'round_answers': {},
+        'player_to_score': {}
     }
 
     writeUpdate(rooms, 'rooms.json')
@@ -129,6 +121,7 @@ def removeFromRoom(room_id: str, player: str) -> None:
     if room_id in rooms:
         print('yes in rooms')
         player_positions = rooms[room_id]['player_to_pos']
+        player_scores = rooms[room_id]['player_to_score']
         players = rooms[room_id]['players']
         print(player)
         if player in player_positions:
@@ -139,6 +132,7 @@ def removeFromRoom(room_id: str, player: str) -> None:
             rooms[room_id]['pos'] -= 1
             players.pop()
             player_positions.pop(player)
+            player_scores.pop(player)
 
         rooms[room_id]['last_interaction'] = time.time()
 
@@ -220,3 +214,83 @@ def get_used_letters(room_id: str) -> [str]:
 def user_id_taken(username: str):
     player_to_sids = getFile('player_to_sid.json')
     return username in player_to_sids
+
+
+def is_name(name):
+    name = name.strip().title()
+    result = nd.search(name)
+
+    # Check if it's listed as a first or last name
+    return bool(result.get("first_name") or result.get("last_name"))
+
+
+def is_valid_word(word):
+    return word.lower() in word_list
+
+
+def is_animal(word):
+    with open('animals_names.txt') as fp:
+        animals = fp.readlines()[0]  # only one line in file
+        return word in animals
+
+
+def is_place(name):
+    return geolocator.geocode(name) is not None
+
+
+def calculate_results(batch_answers):
+    def calc(answer):
+        func_mappings = {
+            'name': is_name,
+            'animal': is_animal,
+            'thing': is_valid_word,
+            'place': is_place
+        }
+        score = 0
+        for k, v in answer.items():
+            try:
+                if func_mappings[k](v):
+                    score += 5
+            except Exception as e:
+                print(f"Error while marking {k} with value {v}")
+                print(str(e))
+        return score
+
+    resp = {}
+    for player, ans in batch_answers.items():
+        score = calc(ans)
+        resp[player] = score
+    return resp
+
+
+def score_player_attempt(player, room_id, answers):
+    rooms = getFile('rooms.json')
+    if room_id in rooms:
+        room = rooms[room_id]
+
+        # get results
+        if player in room['players'] and player not in room['round_answers']:
+            # scores[player] += score
+            room['round_answers'][player] = answers
+            writeUpdate(rooms, 'rooms.json')
+
+            if len(room['round_answers'].keys()) == len(room['players']):
+                # calculate results
+                scores = calculate_results(room['round_answers'])
+                print(f"The scores are: {scores}")
+                update_scores(room, scores)
+                room['round_answers'] = {}
+                writeUpdate(rooms, 'rooms.json')
+
+                return room['player_to_score']   # signal
+
+
+def update_scores(room, new_scores):
+    # rooms = getFile('rooms.json')
+    # if room_id in rooms:
+    #     room = rooms[room_id]
+    scores = room['player_to_score']
+    for player, score in new_scores.items():
+        if player not in scores:
+            scores[player] = 0
+        scores[player] += score
