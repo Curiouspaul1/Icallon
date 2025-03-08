@@ -81,12 +81,16 @@ def show_session():
 @app.post('/session')
 def add_session():
     data = request.get_json()
+    cur_name = session.get('user_id', '')
     if 'session' in data:
         if user_id_taken(data['session']):
-            return {
-                'status': 'error',
-                'message': 'username already taken, pick a different one'
-            }, 400
+            # check if this session has the username
+            # and was disconnected for some reason
+            if cur_name != data['session']:
+                return {
+                    'status': 'error',
+                    'message': 'username already taken, pick a different one'
+                }, 400
 
         session['user_id'] = data['session']
         print(session['user_id'])
