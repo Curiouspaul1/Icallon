@@ -15,6 +15,7 @@ from extensions import (
     session,
     ioclient
 )
+from utils import user_id_taken
 
 load_dotenv()
 
@@ -81,9 +82,18 @@ def show_session():
 def add_session():
     data = request.get_json()
     if 'session' in data:
+        if user_id_taken(data['session']):
+            return {
+                'status': 'error',
+                'message': 'username already taken, pick a different one'
+            }, 400
+
         session['user_id'] = data['session']
         print(session['user_id'])
-    return '', 204
+    return {
+        'status': 'success',
+        'message': ''
+    }, 200
 
 
 @ioclient.on('get-session')

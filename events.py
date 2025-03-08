@@ -132,4 +132,4 @@ def next_player_turn(data):
         to=client_id
     )
 
-    ioclient.emit('public_player_turn', session['user_id'])
+    ioclient.emit('public_player_turn', player)

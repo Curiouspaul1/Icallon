@@ -215,3 +215,8 @@ def get_used_letters(room_id: str) -> [str]:
     rooms = getFile('rooms.json')
     if room_id in rooms:
         return rooms[room_id]['letters']
+
+
+def user_id_taken(username: str):
+    player_to_sids = getFile('player_to_sid.json')
+    return username in player_to_sids
