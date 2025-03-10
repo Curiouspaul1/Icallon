@@ -5,17 +5,22 @@ from flask import (
     request,
     render_template
 )
-# from redis import Redis
+# from redis import Redis TODO: switch to
+# redis IF this doesn't scale💀
+
+from pytz import timezone
+from dotenv import load_dotenv
 from flask_socketio import emit
 from cachelib.file import FileSystemCache
-from dotenv import load_dotenv
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.schedulers.gevent import GeventScheduler
 
 from extensions import (
     init,
     session,
     ioclient
 )
-from utils import user_id_taken
+from utils import user_id_taken, clean_rooms
 
 load_dotenv()
 
@@ -42,6 +47,20 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # init extensions
 init(app)
+
+# init scheduler and set cron job
+scheduler = GeventScheduler()
+# cron = CronTrigger()
+scheduler.add_job(
+    clean_rooms,
+    id='clean_rooms_db',
+    trigger=CronTrigger(
+        hour=5,
+        minute=43,
+        timezone=timezone('Africa/Lagos')
+    )
+)
+scheduler.start()
 
 
 @app.before_request

@@ -117,7 +117,7 @@ def letter_selected(data):
 
     cross_letter(room_id, letter)
 
-    ioclient.emit('letter_chosen', to=room_id)
+    ioclient.emit('letter_chosen', letter, to=room_id)
 
 
 @ioclient.on('next_player_turn')
@@ -142,7 +142,7 @@ def get_player_score(data):
     print(f"marking {player}'s answers : {data['answers']}")
     resp = score_player_attempt(
         player, data['room_id'],
-        data['answers']
+        data['answers'], data['letter']
     )
 
     if resp:

@@ -238,7 +238,7 @@ def is_place(name):
     return geolocator.geocode(name) is not None
 
 
-def calculate_results(batch_answers):
+def calculate_results(batch_answers, letter):
     def calc(answer):
         func_mappings = {
             'name': is_name,
@@ -249,7 +249,7 @@ def calculate_results(batch_answers):
         score = 0
         for k, v in answer.items():
             try:
-                if func_mappings[k](v):
+                if v.startswith(letter) and func_mappings[k](v):
                     score += 5
             except Exception as e:
                 print(f"Error while marking {k} with value {v}")
@@ -263,8 +263,9 @@ def calculate_results(batch_answers):
     return resp
 
 
-def score_player_attempt(player, room_id, answers):
+def score_player_attempt(player, room_id, answers, letter):
     rooms = getFile('rooms.json')
+    # print('GOt file')
     if room_id in rooms:
         room = rooms[room_id]
 
@@ -276,7 +277,7 @@ def score_player_attempt(player, room_id, answers):
 
             if len(room['round_answers'].keys()) == len(room['players']):
                 # calculate results
-                scores = calculate_results(room['round_answers'])
+                scores = calculate_results(room['round_answers'], letter)
                 print(f"The scores are: {scores}")
                 update_scores(room, scores)
                 room['round_answers'] = {}
@@ -294,3 +295,21 @@ def update_scores(room, new_scores):
         if player not in scores:
             scores[player] = 0
         scores[player] += score
+
+
+def clean_rooms():
+    """ Removes stale rooms 🧹"""
+    print('Cron job active: Cleaning the rooms')
+    lock.acquire_write()
+    try:
+        tmp_rooms = {}
+        with open('rooms.json') as fp:
+            rooms = json.load(fp)
+            for room in rooms:
+                diff = time.time() - rooms[room]['last_interaction']
+                if diff < 300:
+                    tmp_rooms[room] = rooms[room]
+        with open('rooms.json', 'w') as fp:
+            json.dump(tmp_rooms, fp)
+    finally:
+        lock.release_write()
