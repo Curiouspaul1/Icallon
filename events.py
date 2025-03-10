@@ -1,5 +1,8 @@
 import time
 
+import gevent
+gevent.monkey.patch_all()
+
 from flask import request
 from flask_socketio import (
     emit, join_room,
@@ -148,5 +151,5 @@ def get_player_score(data):
     if resp:
         # emit round-results
         ioclient.emit('round_result', resp, room=data['room_id'])
-        time.sleep(10)
+        gevent.sleep(10)
         next_player_turn({'room_id': data['room_id']})

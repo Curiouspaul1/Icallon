@@ -1,0 +1,6 @@
+bware/
+env/
+sess/
+venv/
+frontend/
+*.json

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icallon🗣️ | Multiplayer Word Game</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+    <link rel="stylesheet" href="main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <div class="container">
+        <div id="username-screen">
+            <h2>Choose your Player Name: </h2>
+            <input type="text" id="username" placeholder="Username"><br>
+            <button class="pure-button pure-button-primary" id="submit-username">Enter🔥</button>
+        </div>
+
+        <div id="game-selection-screen" style="display: none;">
+            <h1>Game Options</h1>
+            <button class="pure-button pure-button-primary" id="create-game-button">Create Game</button>
+            <button class="pure-button pure-button-primary" id="join-game-button">Join Game</button>
+        </div>
+
+        <div id="join-game-screen" style="display: none;">
+            <h1>Join Game</h1>
+            <input type="text" id="game-key" placeholder="Game Key">
+            <button class="pure-button pure-button-primary" id="submit-game-key">Join</button>
+        </div>
+
+        <div id="create-game-screen" style="display: none;">
+            <h1>Game Code: <span id="display-game-code"></span></h1>
+            <button class="pure-button pure-button-primary" id="start-game-button" disabled="true">Start Game</button>
+        </div>
+
+        <div id="player-list" style="display: none;">
+            <h2>Players:</h2>
+            <table>
+              <tbody id="player-table-body"></tbody> 
+            </table>
+        </div>
+
+        <div id="game-arena" style="display: none;">
+            <h1>Game Arena</h1>
+            <div class="avatar-container" id="player-avatars"></div>
+            <div id="turn-indicator"></div>
+            <div class="letter-selection" id="letter-selection" style="display: none;"></div>
+            <div class="input-fields" id="input-fields" style="display: none;">
+                <div class="input-field-container" id="name-field">
+                    <input type="text" id="name-input" placeholder="Name">
+                </div>
+                <div class="input-field-container" id="animal-field" style="display: none;">
+                    <input type="text" id="animal-input" placeholder="Animal">
+                </div>
+                <div class="input-field-container" id="place-field" style="display: none;">
+                    <input type="text" id="place-input" placeholder="Place">
+                </div>
+                <div class="input-field-container" id="thing-field" style="display: none;">
+                    <input type="text" id="thing-input" placeholder="Thing/Object/Concept">
+                </div>
+                <div class="navigation-buttons">
+                    <button id="prev-field" disabled>&lt;</button>
+                    <button id="next-field">&gt;</button>
+                </div>
+            </div>
+            <div id="countdown" class="has-text"></div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard" style="display: none;">
+            <h1>Leaderboard</h1>
+            <div id="leaderboard-content"></div>
+        </div>
+
+        <div id="results-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white;">
+            <div class="loader"></div> 
+            <p>Calculating results...</p>
+        </div>
+
+        <!-- <footer>
+            <a href="https://www.flaticon.com/free-icons/soccer-player" title="soccer player icons">Soccer player icons created by berkahicon - Flaticon</a> -->
+        <!-- </footer> -->
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
+    <script>
+        $(document).ready(function() {
+            let socket;
+            let storedUsername;
+            var username = '';
+            var gameCode = '';
+            var roundTimer;
+            var letterTimer;
+            var currentLetter;
+            let playerCount = 0;
+            let currentFieldIndex = 0;
+            const fields = ['name-field', 'animal-field', 'place-field', 'thing-field'];
+            hideResultsOverlay();
+
+            storedUsername = sessionStorage.getItem('username');
+            if (storedUsername) {
+                // If username is remembered, directly show game options
+                $('#username-screen').hide();
+                $('#game-selection-screen').show(); 
+                
+                username = storedUsername;
+
+                $.ajax({
+                    type: 'POST',
+                    xhrFields: {
+                        withCredentials: true
+                    },
+                    url: 'http://127.0.0.1:5000/session',
+                    data: JSON.stringify({ session: username }),
+                    contentType: 'application/json',
+                    success: function(response, status, xhr) {
+                        sessionStorage.setItem('username', username);
+                        // console.log(xhr.status)
+                        // Assuming your server returns a status of "success"
+                        // Only connect Socket.IO after successful HTTP session setup
+                        setUp();
+
+                    },
+                    error: function(xhr, textStatus, errorThrown) {
+                        if (xhr.status === 400) {
+                            let errorData = JSON.parse(xhr.responseText);
+                            // console.log(errorData);
+                            alert(`Soryeem: ${errorData.message}`);
+                            $('#username-screen').show();
+
+                        }
+                        else alert("OMo some error occurred ni sha!💀")
+                    }
+                });
+                // ... (your existing AJAX and Socket.IO code, but make sure to use the storedUsername) ...
+            } else {
+                // If no username is remembered, show the username input screen
+                $('#username-screen').show();
+            }
+
+
+            $('#submit-username').click(function() {
+                const username = $('#username').val().trim();
+                if (username === '') {
+                    $('#username').addClass('invalid');
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    xhrFields: {
+                        withCredentials: true
+                    },
+                    url: 'http://127.0.0.1:5000/session',
+                    data: JSON.stringify({ session: username }),
+                    contentType: 'application/json',
+                    success: function(response, status, xhr) {
+                        sessionStorage.setItem('username', username);
+                        // console.log(xhr.status)
+                        // Assuming your server returns a status of "success"
+                        // Only connect Socket.IO after successful HTTP session setup
+                        setUp(socket);
+
+                    },
+                    error: function(xhr, textStatus, errorThrown) {
+                        if (xhr.status === 400) {
+                            let errorData = JSON.parse(xhr.responseText);
+                            // console.log(errorData);
+                            alert(`Soryeem: ${errorData.message}`);
+                            $('#username-screen').show();
+                        }
+                        else alert("OMo some error occurred ni sha!💀")
+                    }
+                });
+
+            });
+            
+            $('#username').on('input', function () {
+                $(this).removeClass('invalid');
+            });
+
+            $('#name-field, #animal-field, #place-field, #thing-field').keypress(function(event) {
+                if (event.which === 13) { // 13 is the key code for Enter
+                    $('#next-field').click(); // Trigger the "Next" button click
+                }
+            });
+
+            $('#prev-field').click(function() {
+                if (currentFieldIndex > 0) {
+                    currentFieldIndex--;
+                    showField(currentFieldIndex);
+                }
+            });
+
+            $('#next-field').click(function() {
+                if (currentFieldIndex < fields.length - 1) {
+                    currentFieldIndex++;
+                    showField(currentFieldIndex);
+                }
+            });
+
+            function showResultsOverlay() {
+                $('#results-overlay').fadeIn();
+            }
+
+            function hideResultsOverlay() {
+                $('#results-overlay').fadeOut();
+            }
+
+            function showLetterSelection(disabledLetters) {
+                $('#letter-selection').empty();
+                for (let i = 1; i <= 26; i++) {
+                    const letter = String.fromCharCode(i + 96);
+                    // Corrected line: create a proper <button> element with the letter
+                    const button = $('<button class="pure-button" data-letter="' + letter.toUpperCase() + '">' + letter + '</button>');
+
+                    if (disabledLetters.includes(i)) { 
+                        button.prop('disabled', true);
+                    }
+
+                    $('#letter-selection').append(button);
+                }
+
+                $('#letter-selection').show();
+                startLetterTimer();
+
+                // Event handler for letter selection (this part remains the same)
+                $('#letter-selection button').click(function() {
+                    currentLetter = $(this).data('letter');
+                    socket.emit('letter_selected', { letter: currentLetter, room_id: gameCode });
+                    $('#letter-selection').hide();
+                    clearInterval(letterTimer);
+                });
+            }
+
+            function startLetterTimer() {
+                let timeLeft = 10;
+                $('#countdown').text('Select a letter: ' + timeLeft);
+                $('#countdown').removeClass('has-no-text');
+                $('#countdown').addClass('has-text');
+                letterTimer = setInterval(function() {
+                    timeLeft--;
+                    if (timeLeft < 0) {
+                        clearInterval(letterTimer);
+                        $('#letter-selection').hide();
+                        // Show "Passed" message
+                        $('#countdown').text('Passed');
+                        $('#countdown').fadeIn(500, function() {
+                            $(this).fadeOut(1500, function() {
+                                $(this).show();
+                                $(this).text('');
+                                $('#countdown').removeClass('has-text');
+                                $(this).addClass('has-no-text');
+                            }) // Fade out after 1.5 seconds
+                        });
+                        $('#turn-indicator').text('');
+
+                        // Emit "next_player_turn" event
+                        socket.emit('next_player_turn', { room_id: gameCode }); 
+
+                        // Hide letter selection
+                        hideLetterSelection(); 
+                    } else {
+                        $('#countdown').text('Select a letter: ' + timeLeft);
+                    }
+                }, 1000);
+            }
+
+            function hideLetterSelection() {
+                $('#letter-selection').hide();
+            }
+
+            function startRoundTimer() {
+                let timeLeft = 5;
+                roundTimer = setInterval(function() {
+                    timeLeft--;
+                    if (timeLeft < 0) {
+                        clearInterval(roundTimer);
+                        $('#countdown').text('');
+                        $('#input-fields').hide();
+                        sendPlayerAnswers();
+                    } else {
+                        $('#countdown').text('Round Time: ' + timeLeft);
+                    }
+                }, 1000);
+            }
+
+            function updatePlayerTable(players) {
+                $('#player-table-body').empty(); // Clear existing entries
+                players.forEach(player => {
+                const row = $('<tr><td>' + player + ' entered the room! 🔥' + '</td></tr>');
+                $('#player-table-body').append(row);
+                });
+            }
+
+            function showField(index) {
+                $('.input-field-container').hide();
+                $('#' + fields[index]).show();
+
+                // Enable/disable navigation buttons
+                $('#prev-field').prop('disabled', index === 0);
+                $('#next-field').prop('disabled', index === fields.length - 1);
+            }
+
+            function sendPlayerAnswers() {
+                const answers = {
+                    name: $('#name-input').val(),
+                    animal: $('#animal-input').val(),
+                    place: $('#place-input').val(),
+                    thing: $('#thing-input').val()
+                };
+                let data = { 
+                    answers: answers,
+                    room_id: gameCode,
+                    letter: currentLetter
+                }
+                socket.emit('player_answer', data);
+                showResultsOverlay();
+            }
+
+            function updatePlayerAvatars(players) {
+                $('#player-avatars').empty();
+                players.forEach(player => {
+                    const avatar = $(`<div class="avatar">
+                        <div class="player-avatar"><img src="avatar.png" alt="Avatar"></div>
+                        <div class="player-name"><span>${player}</span></div>
+                    </div>`);
+                    $('#player-avatars').append(avatar);
+                });
+            }
+            $('#create-game-button').click(function() {
+                if (socket) socket.emit('create');
+                $('#player-list').show();
+            });
+
+            $('#join-game-button').click(function() {
+                $('#game-selection-screen').hide();
+                $('#join-game-screen').show();
+                $('#player-list').show();
+            });
+
+            $('#submit-game-key').click(function() {
+                gameCode = $('#game-key').val();
+                if (socket) socket.emit('join', { roomID: gameCode });
+            });
+
+            $('#start-game-button').click(function() {
+                if (socket) socket.emit('start', { room_id: gameCode });
+            });
+
+            function setUp() {
+                socket = io('http://127.0.0.1:5000', {
+                    withCredentials: true,
+                    transports: ['websocket', 'polling']
+                });
+
+                $('#username-screen').hide();
+                $('#game-selection-screen').show();
+
+                // Socket.IO event handlers (moved here)
+                socket.on('game_code', function(code) {
+                    gameCode = code;
+                    $('#display-game-code').text(code);
+                    $('#game-selection-screen').hide();
+                    $('#create-game-screen').show();
+                });
+
+                socket.on('player_joined', function(players) {
+                    updatePlayerAvatars(players);
+                    playerCount = players.length; // Update player count
+
+                    // Enable/disable start button based on player count
+                    if (playerCount >= 2) {
+                    $('#start-game-button').prop('disabled', false);
+                    } else {
+                    $('#start-game-button').prop('disabled', true);
+                    }
+
+                    // Update player table
+                    updatePlayerTable(players);
+                });
+
+                socket.on('player_left', function(players) {
+                    updatePlayerAvatars(players);
+                    updatePlayerTable(players);
+                });
+
+                socket.on('game_started', function(players) {
+                    $('#create-game-screen').hide();
+                    $('#join-game-screen').hide();
+                    $('#player-list').hide();
+                    $('#game-arena').show();
+                    updatePlayerAvatars(players);
+                });
+
+                socket.on('private_player_turn', function(data) {
+                    $('#turn-indicator').text("Your Turn! Pick a Letter");
+                    setTimeout(
+                        ()=>{
+                            $('#turn-indicator').fadeOut(
+                                500,
+                                () => {
+                                    $('#turn-indicator').text('');
+                                    $('#turn-indicator').show();
+                                }
+                            );
+                        },
+                        2000
+                    );
+                    showLetterSelection(data.disabledLetters);
+                });
+
+                socket.on('public_player_turn', function(data) {
+                    if (data !== username) {
+                        $('#turn-indicator').text(data + "'s turn");
+                        setTimeout(
+                            ()=>{
+                                $('#turn-indicator').fadeOut(
+                                    500,
+                                    () => {
+                                        $('#turn-indicator').text('');
+                                        $('#turn-indicator').show();
+                                    }
+                                );
+                            },
+                            2000
+                        );
+                    }
+                });
+
+                socket.on('letter_chosen', function(letter) {
+                    currentLetter = letter;
+                    $('#turn-indicator').text(`🔥Letter ${letter} selected🔥`)
+                    $('#turn-indicator').fadeIn(500, function () {
+                        setTimeout(
+                            ()=>{
+                                $(this).fadeOut(500, ()=>{
+                                    $(this).text('');
+                                    $(this).show();
+                                })
+                            },
+                            2000
+                        )
+                        
+                    });
+                    $('#input-fields').show();
+                    currentFieldIndex = 0;
+                    showField(currentFieldIndex); // Show the first field
+                    $('#countdown').text('Round Time: 30');
+                    startRoundTimer();
+                });
+
+                socket.on('round_result', function(scores) {
+                    hideResultsOverlay();
+                    $('#leaderboard-content').empty();
+                    const sortedScores = Object.entries(scores)
+                        .sort(([, scoreA], [, scoreB]) => scoreB - scoreA); // Sort by score
+
+                    let rank = 1;
+                    for (const player in scores) {
+                        const item = $(
+                            '<div class="leaderboard-item">' +
+                            '<div class="leaderboard-rank">' + rank + '</div>' +
+                            '<div class="leaderboard-avatar"><img src="avatar.png" alt="Avatar"></div>' + // Replace with actual avatar URLs
+                            '<div class="leaderboard-details">' +
+                            '<div class="leaderboard-name">' + player + '</div>' +
+                            '<div class="leaderboard-score">' + scores[player] + ' QP</div>' +
+                            '</div>' +
+                            '</div>'
+                        );
+
+                        $('#leaderboard-content').append(item);
+                        rank++;
+                    }
+                    $('#leaderboard').show();
+                    setTimeout(() => $('#leaderboard').fadeOut(
+                        500,
+                        function () {
+                            let countdown = 3;
+                            $('#countdown').text('Next round in ' + countdown);
+                            $('#countdown').removeClass('has-no-text');
+                            $('#countdown').addClass('has-text');
+                            $('#countdown').fadeIn(500);
+
+                            let countdownInterval = setInterval(function() {
+                                countdown--;
+                                $('#countdown').text('Next round in ' + countdown);
+                                if (countdown === 0) {
+                                    clearInterval(countdownInterval);
+                                    $('#countdown').fadeOut(500, function() {
+                                        $(this).show();
+                                        $(this).text('');
+                                        $('#countdown').removeClass('has-text');
+                                        $(this).addClass('has-no-text');
+                                    });
+                                }
+                            }, 1000);
+                        }
+                    ), 5000)
+                });
+            }
+
+            // $(window).on('beforeunload', function() {
+            //     sessionStorage.removeItem('username');
+            // });
+        });
+    </script>
+</body>
+</html>
