@@ -82,7 +82,6 @@ def getFile(filename: str) -> dict:
 
 def addToRoom(room_id: str, player: str) -> None:
     rooms = getFile('rooms.json')
-    print('before', rooms)
     if room_id in rooms:
         rooms[room_id]['players'].append(player)
         rooms[room_id]['player_to_pos'][player] = rooms[room_id]['pos']
@@ -90,7 +89,6 @@ def addToRoom(room_id: str, player: str) -> None:
         rooms[room_id]['pos'] += 1
         rooms[room_id]['last_interaction'] = time.time()
 
-        print(rooms)
         writeUpdate(rooms, 'rooms.json')
 
 

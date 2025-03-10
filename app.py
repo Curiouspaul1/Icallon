@@ -55,8 +55,8 @@ scheduler.add_job(
     clean_rooms,
     id='clean_rooms_db',
     trigger=CronTrigger(
-        hour=5,
-        minute=43,
+        hour=0,
+        minute=0,
         timezone=timezone('Africa/Lagos')
     )
 )
