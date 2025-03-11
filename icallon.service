@@ -1,0 +1,13 @@
+[Unit]
+Description=Game Server
+After=network.target
+
+[Service]
+User=momenttrack
+WorkingDirectory=/home/curiouspaul/icallon
+Environment="PATH=/home/curiouspaul/icallon/.venv/bin"
+ExecStart=/bin/sh /home/curiouspaul/icallon/run.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

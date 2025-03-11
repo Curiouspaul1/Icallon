@@ -1,8 +1,4 @@
-import time
-
 import gevent
-gevent.monkey.patch_all()
-
 from flask import request
 from flask_socketio import (
     emit, join_room,

@@ -8,6 +8,26 @@
 </head>
 <body>
     <div class="container">
+        <div id="help-icon">
+            <img src="help-icon.svg" alt="Help"> 
+        </div>
+        <div id="help-overlay" style="display: none;">
+            <div id="help-content" style="background-color: white;">
+                <div id="help-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div id="sound-toggle">
+                        <img src="sound-on.svg" alt="Sound On" id="sound-icon">
+                    </div>
+                    <div id="help-close">
+                        <img src="close-icon.svg" alt="Close">
+                    </div>
+                </div>
+                <div id="help-info" style="margin-top: 20px;">
+                    <p>Game by Curiouspaul.</p>
+                    <p>Credits: Freepik.com, ionic.io, and me💅</p>
+                    <p>More info: paulcurious7@gmail.com</p>
+                </div>
+            </div>
+        </div>
         <div id="username-screen">
             <h2>Choose your Player Name: </h2>
             <input type="text" id="username" placeholder="Username"><br>
@@ -73,6 +93,10 @@
             <div class="loader"></div> 
             <p>Calculating results...</p>
         </div>
+        <audio id="backgroundMusic" loop>
+            <source src="sounds/theme1.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
 
         <!-- <footer>
             <a href="https://www.flaticon.com/free-icons/soccer-player" title="soccer player icons">Soccer player icons created by berkahicon - Flaticon</a> -->
@@ -92,6 +116,8 @@
             var currentLetter;
             let playerCount = 0;
             let currentFieldIndex = 0;
+            // let serverURL = 'https://icallon-262474602690.us-central1.run.app';
+            let serverURL = 'http://127.0.0.1:5000';
             const fields = ['name-field', 'animal-field', 'place-field', 'thing-field'];
             hideResultsOverlay();
 
@@ -108,7 +134,7 @@
                     xhrFields: {
                         withCredentials: true
                     },
-                    url: 'http://127.0.0.1:5000/session',
+                    url: `${serverURL}/session`,
                     data: JSON.stringify({ session: username }),
                     contentType: 'application/json',
                     success: function(response, status, xhr) {
@@ -149,7 +175,7 @@
                     xhrFields: {
                         withCredentials: true
                     },
-                    url: 'http://127.0.0.1:5000/session',
+                    url: `${serverURL}/session`,
                     data: JSON.stringify({ session: username }),
                     contentType: 'application/json',
                     success: function(response, status, xhr) {
@@ -183,6 +209,37 @@
                 }
             });
 
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            backgroundMusic.volume = 0.2;
+
+            $('#help-icon').click(function() {
+                $('#help-overlay').fadeIn();
+            });
+
+            $('#help-close').click(function() {
+                $('#help-overlay').fadeOut();
+            });
+
+            $('#help-overlay').click(function(event) {
+                if (event.target === this) { 
+                    $('#help-overlay').fadeOut();
+                }
+            });
+            
+
+            $('#sound-toggle').click(function() {
+                const soundIcon = $('#sound-icon');
+                const isMuted = backgroundMusic.muted;
+
+                if (isMuted) {
+                    backgroundMusic.muted = false;
+                    soundIcon.attr('src', 'sound-on.svg').attr('alt', 'Sound On');
+                } else {
+                    backgroundMusic.muted = true;
+                    soundIcon.attr('src', 'sound-off.svg').attr('alt', 'Sound Off');
+                }
+            });
+
             $('#prev-field').click(function() {
                 if (currentFieldIndex > 0) {
                     currentFieldIndex--;
@@ -196,6 +253,14 @@
                     showField(currentFieldIndex);
                 }
             });
+
+            function playBackgroundMusic() {
+                backgroundMusic.play();
+            }
+
+            function pauseBackgroundMusic() {
+                backgroundMusic.pause();
+            }
 
             function showResultsOverlay() {
                 $('#results-overlay').fadeIn();
@@ -347,7 +412,7 @@
             });
 
             function setUp() {
-                socket = io('http://127.0.0.1:5000', {
+                socket = io(serverURL, {
                     withCredentials: true,
                     transports: ['websocket', 'polling']
                 });
@@ -389,6 +454,7 @@
                     $('#player-list').hide();
                     $('#game-arena').show();
                     updatePlayerAvatars(players);
+                    playBackgroundMusic();
                 });
 
                 socket.on('private_player_turn', function(data) {
@@ -471,6 +537,7 @@
                         rank++;
                     }
                     $('#leaderboard').show();
+                    pauseBackgroundMusic();
                     setTimeout(() => $('#leaderboard').fadeOut(
                         500,
                         function () {

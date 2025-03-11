@@ -13,7 +13,7 @@ from names_dataset import NameDataset
 from read_writer import ReadWriteLock
 
 
-nd = NameDataset()
+nd = NameDataset()  # this thing uses 3.2GB RAM (💀😭)
 try:
     word_list = set(words.words())
 except LookupError:

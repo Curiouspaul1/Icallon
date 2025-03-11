@@ -22,8 +22,10 @@ body {
 }
 
 .container {
+    position: relative;
     width: 80%;
     max-width: 600px;
+    min-height: 300px;
     padding: 20px;
     background-color: #DE6449;
     border-radius: 8px;
@@ -335,4 +337,50 @@ button:active {
     font-family: "Nosifer", sans-serif;
     font-weight: 400;
     font-style: normal;
+}
+
+#help-icon {
+    position: absolute;
+    top: 10px; /* Adjust top spacing as needed */
+    right: 10px; /* Adjust right spacing as needed */
+    cursor: pointer;
+    z-index: 10;
+    width: 30px;
+    height: 30px;
+}
+
+#help-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#help-content {
+    background-color: white;
+    border: solid 2px #007bff;
+    border-radius: 25px;
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+#help-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#sound-toggle, #help-close {
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
 }
