@@ -117,7 +117,6 @@ def get_players(room_id):
 def removeFromRoom(room_id: str, player: str) -> None:
     rooms = getFile('rooms.json')
     if room_id in rooms:
-        print('yes in rooms')
         player_positions = rooms[room_id]['player_to_pos']
         player_scores = rooms[room_id]['player_to_score']
         players = rooms[room_id]['players']

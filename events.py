@@ -1,4 +1,4 @@
-import gevent
+import eventlet
 from flask import request
 from flask_socketio import (
     emit, join_room,
@@ -26,12 +26,11 @@ from utils import (
 
 
 @ioclient.on('connect')
-def connect():
-    print('this is getting clleds')
-    user_id = session['user_id']
-    print(user_id)
+def connect(*args):
+    user_id = session.get('user_id', '')
+    if not user_id:
+        return False
     session['client_id'] = request.sid
-    print(session['client_id'])
     store_sid(user_id, request.sid)
 
 
@@ -42,7 +41,8 @@ def set_session(data):
 
 
 @ioclient.on('disconnect')
-def disconnect():
+def disconnect(reason):
+    print(f'Client disconnected because: {reason}')
     player = session['user_id']
     session.pop('client_id')
 
@@ -147,5 +147,5 @@ def get_player_score(data):
     if resp:
         # emit round-results
         ioclient.emit('round_result', resp, room=data['room_id'])
-        gevent.sleep(10)
+        eventlet.sleep(10)
         next_player_turn({'room_id': data['room_id']})

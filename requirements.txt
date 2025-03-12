@@ -8,13 +8,13 @@ charset-normalizer==3.4.1
 click==8.1.8
 colorama==0.4.6
 dnspython==2.7.0
+eventlet==0.39.1
 Flask==3.1.0
 Flask-Cors==5.0.0
 Flask-Session==0.8.0
 Flask-SocketIO==5.5.0
 geographiclib==2.0
 geopy==2.4.1
-gevent==24.11.1
 greenlet==3.1.1
 h11==0.14.0
 idna==3.10

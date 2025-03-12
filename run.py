@@ -1,5 +1,5 @@
-from gevent.monkey import patch_all
-patch_all()
+from eventlet import monkey_patch
+monkey_patch()
 
 from app import ioclient, app  # noqa: E402
 

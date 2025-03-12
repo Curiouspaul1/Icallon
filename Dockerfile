@@ -10,7 +10,7 @@ RUN apt update && apt install -y \
     build-essential \
     python3-dev
 
-RUN pip install uwsgi
+RUN pip install gunicorn
 RUN pip install -r requirements.txt
 
 # prepare dbs

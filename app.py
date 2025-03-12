@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from flask_socketio import emit
 from cachelib.file import FileSystemCache
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.schedulers.gevent import GeventScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from extensions import (
     init,
@@ -49,7 +49,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 init(app)
 
 # init scheduler and set cron job
-scheduler = GeventScheduler()
+scheduler = BackgroundScheduler()
 # cron = CronTrigger()
 scheduler.add_job(
     clean_rooms,
