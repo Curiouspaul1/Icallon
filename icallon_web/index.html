@@ -154,7 +154,12 @@
                             $('#username-screen').show();
 
                         }
-                        else alert("OMo some error occurred ni sha!💀")
+                        else {
+                            console.log(xhr.status);
+                            console.log(errorThrown);
+                            console.log(textStatus);
+                            alert("OMo some error occurred ni sha!💀")
+                        }
                     }
                 });
                 // ... (your existing AJAX and Socket.IO code, but make sure to use the storedUsername) ...
@@ -194,7 +199,12 @@
                             alert(`Soryeem: ${errorData.message}`);
                             $('#username-screen').show();
                         }
-                        else alert("OMo some error occurred ni sha!💀")
+                        else {
+                            console.log(xhr.status);
+                            console.log(errorThrown);
+                            console.log(textStatus);
+                            alert("OMo some error occurred ni sha!💀")
+                        }
                     }
                 });
 
@@ -542,6 +552,11 @@
                     setTimeout(() => $('#leaderboard').fadeOut(
                         500,
                         function () {
+                            $('#name-input').val('');
+                            $('#animal-input').val('');
+                            $('#place-input').val('');
+                            $('#thing-input').val('');
+
                             let countdown = 3;
                             $('#countdown').text('Next round in ' + countdown);
                             $('#countdown').removeClass('has-no-text');
