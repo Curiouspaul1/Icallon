@@ -120,7 +120,6 @@ def removeFromRoom(room_id: str, player: str) -> None:
         player_positions = rooms[room_id]['player_to_pos']
         player_scores = rooms[room_id]['player_to_score']
         players = rooms[room_id]['players']
-        print(player)
         if player in player_positions:
             player_pos = player_positions[player]
             player_positions[players[-1]] = player_pos
@@ -129,7 +128,9 @@ def removeFromRoom(room_id: str, player: str) -> None:
             rooms[room_id]['pos'] -= 1
             players.pop()
             player_positions.pop(player)
-            player_scores.pop(player)
+
+            if player in player_scores:
+                player_scores.pop(player)
 
         rooms[room_id]['last_interaction'] = time.time()
 
