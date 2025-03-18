@@ -1,5 +1,5 @@
-# uwsgi --http :5000 --threads 10 --http-websockets --http-keepalive \
-#     --master --wsgi-file app.py --callable app \
+# uwsgi --http :5000 --gevent 50 --gevent-monkey-patch --http-websockets --http-keepalive \
+#     --master --wsgi-file run.py --callable game\
 #     --cheaper 10 --cheaper-step 5 --cheaper-algo spare \
 #     --workers 20
 
