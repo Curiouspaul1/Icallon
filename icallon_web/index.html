@@ -425,7 +425,7 @@
             function setUp() {
                 socket = io(serverURL, {
                     withCredentials: true,
-                    transports: ['websocket', 'polling']
+                    transports: ['websocket']
                 });
 
                 $('#username-screen').hide();

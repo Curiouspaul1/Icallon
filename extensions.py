@@ -11,7 +11,7 @@ ioclient = SocketIO(
         "https://icallon.netlify.app"
     ],
     manage_session=False,
-    # async_mode="gevent"
+    async_mode='eventlet'
 )
 sess = Session()
 cors = CORS()

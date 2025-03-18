@@ -247,7 +247,10 @@ def calculate_results(batch_answers, letter):
         score = 0
         for k, v in answer.items():
             try:
-                if v.startswith(letter) and func_mappings[k](v):
+                v = v.lower()
+                chosen_letter = letter.lower()
+                res = func_mappings[k](v)
+                if v.startswith(chosen_letter) and res:
                     score += 5
             except Exception as e:
                 print(f"Error while marking {k} with value {v}")
