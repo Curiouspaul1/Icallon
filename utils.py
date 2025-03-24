@@ -139,10 +139,25 @@ def indexRoom(rooms, room_id):
         'letters': [],
         'player_to_pos': {},
         'round_answers': {},
-        'player_to_score': {}
+        'player_to_score': {},
+        'game_started': False
     }
 
     return Resp(file_json=rooms)
+
+
+def is_in_session(room_id):
+    rooms = getFile('rooms.json')
+    if room_id in rooms:
+        return rooms[room_id]['game_started']
+
+
+@execute_action(filename='rooms.json')
+def set_room_mode(rooms, room_id):
+    if room_id in rooms:
+        rooms[room_id]['game_started'] = True
+
+        return Resp(file_json=rooms)
 
 
 @execute_action(filename='rooms.json')
@@ -296,7 +311,6 @@ def calculate_results(batch_answers, letter):
 
     resp = {}
     for player, ans in batch_answers.items():
-        print(f'{player} =====RESULT=======', ans)
         score = calc(ans)
         resp[player] = score
     return resp
@@ -308,29 +322,16 @@ def score_player_attempt(player, room_id, answers, letter):
         _file = open('rooms.json', 'r')
         rooms = json.load(_file)
         _file.close()  # close file after reading
-        print('GOt file')
         if room_id in rooms:
             room = rooms[room_id]
-            print('===in rooms==')
             # get results
             if player in room['players'] and player not in room['round_answers']:
                 room['round_answers'][player] = answers
                 with open('rooms.json', 'w') as _file:
                     json.dump(rooms, _file, indent=4)
-                    print("===Abel to write answer===")
-                    print(
-                        "THE ANSWERS COLLECTED", room['round_answers'].keys(),
-                        room['players']
-                    )
-                    print(
-                        "THE EXPECTED KINI:: ",
-                        len(room['round_answers'].keys()) == len(room['players'])
-                    )
                 if len(room['round_answers'].keys()) == len(room['players']):
-                    print('THIS IS WORKING!')
                     # calculate results
                     scores = calculate_results(room['round_answers'], letter)
-                    print(f"The scores are: {scores}")
                     update_scores(room, scores)
                     room['round_answers'] = {}
                     with open('rooms.json', 'w') as _file:

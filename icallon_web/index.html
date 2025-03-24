@@ -38,10 +38,11 @@
             <h1>Game Options</h1>
             <button class="pure-button pure-button-primary" id="create-game-button">Create Game</button>
             <button class="pure-button pure-button-primary" id="join-game-button">Join Game</button>
+            <button class="pure-button" id="instructions-button">How to Play🆘</button>
         </div>
 
         <div id="join-game-screen" style="display: none;">
-            <h1>Join Game</h1>
+            <h2 id="join-game-header">Join Game</h2>
             <input type="text" id="game-key" placeholder="Game Key">
             <button class="pure-button pure-button-primary" id="submit-game-key">Join</button>
         </div>
@@ -92,6 +93,42 @@
         <div id="results-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white;">
             <div class="loader"></div> 
             <p>Calculating results...</p>
+        </div>
+        <div id="instructions-overlay" style="display: none;">
+            <div id="instructions-content">
+                <div id="instructions-header">
+                    <h2>How to Play</h2>
+                    <div id="instructions-close">
+                        <img src="close-icon.svg" alt="Close">
+                    </div>
+                </div>
+                <div id="instructions-body">
+                    <p>Welcome to the Multiplayer Word Game!</p>
+                    <p><strong>Creating a Game:</strong></p>
+                    <ul>
+                        <li>Click the "Create Game" button.</li>
+                        <li>Share the generated "Game Code" with your friends.</li>
+                        <li>Once at least 2 players have joined, the "Start Game" button will be enabled.</li>
+                        <li>Click "Start Game" to begin.</li>
+                    </ul>
+                    <p><strong>Joining a Game:</strong></p>
+                    <ul>
+                        <li>Click the "Join Game" button.</li>
+                        <li>Enter the "Game Code" provided by the game creator.</li>
+                        <li>Click the "Join" button.</li>
+                    </ul>
+                    <p><strong>Playing the Game:</strong></p>
+                    <ul>
+                        <li>When it's your turn, you'll see a prompt to "Pick a Letter".</li>
+                        <li>Select a letter from the available options.</li>
+                        <li>Once a letter is chosen, all players will have a short time to enter a word starting with that letter for each category (Name, Animal, Place, Thing).</li>
+                        <li>Fill in the input fields and click "Next" to move to the next category.</li>
+                        <li>After the time is up, the results will be displayed, and scores will be calculated.</li>
+                        <li>The game continues for multiple rounds.</li>
+                    </ul>
+                    <p>Have fun!</p>
+                </div>
+            </div>
         </div>
         <audio id="backgroundMusic" loop>
             <source src="sounds/theme1.mp3" type="audio/mpeg">
@@ -209,7 +246,21 @@
                 });
 
             });
-            
+
+            $('#instructions-button').click(function() {
+                $('#instructions-overlay').fadeIn();
+            });
+
+            $('#instructions-close').click(function() {
+                $('#instructions-overlay').fadeOut();
+            });
+
+            $('#instructions-overlay').click(function(event) {
+                if (event.target === this) {
+                    $('#instructions-overlay').fadeOut();
+                }
+            });
+
             $('#username').on('input', function () {
                 $(this).removeClass('invalid');
             });
@@ -330,7 +381,7 @@
                         $('#turn-indicator').text('');
 
                         // Emit "next_player_turn" event
-                        socket.emit('next_player_turn', { room_id: gameCode }); 
+                        socket.emit('next_player_turn', { room_id: gameCode });
 
                         // Hide letter selection
                         hideLetterSelection(); 
@@ -425,7 +476,7 @@
             function setUp() {
                 socket = io(serverURL, {
                     withCredentials: true,
-                    transports: ['websocket']
+                    transports: ['websocket', 'polling']
                 });
 
                 $('#username-screen').hide();
@@ -440,6 +491,9 @@
                 });
 
                 socket.on('player_joined', function(players) {
+                    $('#join-game-header').text('Game Lobby - Waiting for game to start');
+                    $('#game-key').hide();
+                    $('#submit-game-key').hide();
                     updatePlayerAvatars(players);
                     playerCount = players.length; // Update player count
 
@@ -467,6 +521,8 @@
                     updatePlayerAvatars(players);
                     playBackgroundMusic();
                 });
+
+                socket.on('game_room_closed', (msg)=>{alert(msg)});
 
                 socket.on('private_player_turn', function(data) {
                     $('#turn-indicator').text("Your Turn! Pick a Letter");

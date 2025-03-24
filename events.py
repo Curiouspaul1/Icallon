@@ -19,6 +19,8 @@ from utils import (
     remove_sid,
     get_players,
     get_sid,
+    is_in_session,
+    set_room_mode,
     get_used_letters,
     score_player_attempt,
     cross_letter
@@ -59,6 +61,15 @@ def join(data):
     username = session['user_id']
 
     room = data['roomID']
+
+    if is_in_session(room):
+        emit(
+            'game_room_closed',
+            "Sorry game started already, late comer💅,"
+            " join another game or create one"
+        )
+        return
+
     join_room(room)
 
     # store room details
@@ -91,6 +102,7 @@ def start_game(data):
     room_id = data['room_id']
     player = get_player_turn(room_id)
     all_players = get_players(room_id)
+    set_room_mode(room_id)
 
     if len(all_players) < 2:
         emit('cant_start_game', MSG.LOW_PLAYER_COUNT)
