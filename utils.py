@@ -3,8 +3,12 @@ import json
 import nltk
 import string
 import random
-from typing import List
+from typing import (
+    List,
+    Optional
+)
 from functools import wraps
+from dataclasses import dataclass
 from collections import defaultdict
 
 from geopy import Nominatim
@@ -27,6 +31,12 @@ geolocator = Nominatim(user_agent="Icallon")
 lock = ReadWriteLock()
 
 # TODO: Use classes and OOP to write more cohesive workflow
+
+
+@dataclass
+class Resp:
+    file_json: Optional[dict] = None
+    routine_resp: Optional[any] = None
 
 
 def create_letter_defaultdict(default_value):
@@ -62,20 +72,20 @@ def genRoomId():
     return token
 
 
-def writeUpdate(
-    obj: dict,
-    filename: str,
-    subroutine: callable,
-    args: List[any]
-) -> None:
-    lock.acquire_write()
-    try:
-        with open(filename, 'r+') as _file:
-            obj = json.load(fp)
-            resp = subroutine(*args)
-            json.dump(resp, _file, indent=4)
-    finally:
-        lock.release_write()
+# def writeUpdate(
+#     obj: dict,
+#     filename: str,
+#     subroutine: callable,
+#     args: List[any]
+# ) -> None:
+#     lock.acquire_write()
+#     try:
+#         with open(filename, 'r+') as _file:
+#             obj = json.load(fp)
+#             resp = subroutine(*args)
+#             json.dump(resp, _file, indent=4)
+#     finally:
+#         lock.release_write()
 
 
 def execute_action(filename):
@@ -84,13 +94,13 @@ def execute_action(filename):
             lock.acquire_write()
             try:
                 with open(filename, 'r') as _file:
-                    obj = json.load(_file)
-                    resp = subroutine(obj, *args, **kwargs)
-                if isinstance(resp, dict) and 'write' in resp:
-                    resp.pop('write')
+                    obj: dict = json.load(_file)
+                    resp: Resp = subroutine(obj, *args, **kwargs)
+                if resp and resp.file_json:
                     with open(filename, 'w') as _file:
-                        json.dump(resp, _file, indent=4)
-                        _file.truncate()
+                        json.dump(resp.file_json, _file, indent=4)
+                if resp and resp.routine_resp:
+                    return resp.routine_resp
             finally:
                 lock.release_write()
         return wrap
@@ -102,9 +112,9 @@ def getFile(filename: str) -> dict:
     try:
         with open(filename, 'r') as fp:
             data = json.load(fp)
+            return data
     finally:
         lock.release_read()
-        return data
 
 
 @execute_action(filename='rooms.json')
@@ -116,8 +126,7 @@ def addToRoom(rooms: dict, room_id: str, player: str) -> None:
         rooms[room_id]['pos'] += 1
         rooms[room_id]['last_interaction'] = time.time()
 
-        rooms['write'] = 1
-        return rooms
+        return Resp(file_json=rooms)
 
 
 @execute_action(filename='rooms.json')
@@ -133,14 +142,14 @@ def indexRoom(rooms, room_id):
         'player_to_score': {}
     }
 
-    rooms['write'] = 1
-    return rooms
+    return Resp(file_json=rooms)
 
 
 @execute_action(filename='rooms.json')
 def get_players(rooms, room_id):
     if room_id in rooms:
-        return rooms[room_id]['players']
+        return Resp(routine_resp=rooms[room_id]['players'])
+
 
 @execute_action(filename='rooms.json')
 def removeFromRoom(rooms, room_id: str, player: str) -> None:
@@ -162,9 +171,7 @@ def removeFromRoom(rooms, room_id: str, player: str) -> None:
 
         rooms[room_id]['last_interaction'] = time.time()
 
-        rooms['write'] = 1
-
-        return rooms
+        return Resp(file_json=rooms)
 
 
 @execute_action(filename='player_to_rooms.json')
@@ -172,14 +179,13 @@ def map_player_to_room(sess_to_room, player: str, room_id: str) -> None:
     if player not in sess_to_room:
         sess_to_room[player] = room_id
 
-        sess_to_room['write'] = 1
-        return sess_to_room
+        return Resp(file_json=sess_to_room)
 
 
 @execute_action(filename='player_to_rooms.json')
 def get_player_room(sess_to_room, player: str) -> [str | None]:
     if player in sess_to_room:
-        return sess_to_room[player]
+        return Resp(file_json=sess_to_room)
 
 
 @execute_action(filename='rooms.json')
@@ -197,18 +203,17 @@ def get_player_turn(rooms, room_id: str) -> str:
         else:
             room['ptr'] += 1  # round robin
 
-        rooms['write'] = 1
-        return rooms
+        resp = Resp(file_json=rooms)
+        setattr(resp, 'routine_resp', player)
 
-    return player
+        return resp
 
 
 @execute_action(filename='player_to_sid.json')
 def store_sid(player_to_sids, player: str, sid: str) -> None:
     """ maps player name to client sid """
     player_to_sids[player] = sid
-    player_to_sids['write'] = 1
-    return player_to_sids
+    return Resp(file_json=player_to_sids)
 
 
 def get_sid(player: str) -> str:
@@ -217,22 +222,22 @@ def get_sid(player: str) -> str:
         return player_to_sids[player]
 
 
-def remove_sid(player: str) -> None:
-    player_to_sids = getFile('player_to_sid.json')
+@execute_action(filename='player_to_sid.json')
+def remove_sid(player_to_sids, player: str) -> None:
     if player in player_to_sids:
         player_to_sids.pop(player)
 
-        writeUpdate(player_to_sids, 'player_to_sid.json')
+        return Resp(file_json=player_to_sids)
 
 
-def cross_letter(room_id: str, letter: str) -> None:
-    rooms = getFile('rooms.json')
+@execute_action(filename='rooms.json')
+def cross_letter(rooms, room_id: str, letter: str) -> None:
     if room_id in rooms:
         room = rooms[room_id]
         idx = letter_to_idx(letter)
         room['letters'].append(idx)
 
-        writeUpdate(rooms, 'rooms.json')
+        return Resp(file_json=rooms)
 
 
 def get_used_letters(room_id: str) -> [str]:
@@ -241,8 +246,8 @@ def get_used_letters(room_id: str) -> [str]:
         return rooms[room_id]['letters']
 
 
-@execute_action(filename='player_to_sid.json')
-def user_id_taken(player_to_sids, username: str):
+def user_id_taken(username: str):
+    player_to_sids = getFile('player_to_sid.json')
     return username in player_to_sids
 
 
@@ -298,27 +303,41 @@ def calculate_results(batch_answers, letter):
 
 
 def score_player_attempt(player, room_id, answers, letter):
-    rooms = getFile('rooms.json')
-    print('GOt file')
-    if room_id in rooms:
-        room = rooms[room_id]
-        print('===in rooms==')
-        # get results
-        if player in room['players'] and player not in room['round_answers']:
-            # scores[player] += score
-            room['round_answers'][player] = answers
-            writeUpdate(rooms, 'rooms.json')
-            print("===Abel to write answer===")
-            if len(room['round_answers'].keys()) == len(room['players']):
-                print('THIS IS WORKING!')
-                # calculate results
-                scores = calculate_results(room['round_answers'], letter)
-                print(f"The scores are: {scores}")
-                update_scores(room, scores)
-                room['round_answers'] = {}
-                writeUpdate(rooms, 'rooms.json')
-
-                return room['player_to_score']   # signal
+    lock.acquire_write()
+    try:
+        _file = open('rooms.json', 'r')
+        rooms = json.load(_file)
+        _file.close()  # close file after reading
+        print('GOt file')
+        if room_id in rooms:
+            room = rooms[room_id]
+            print('===in rooms==')
+            # get results
+            if player in room['players'] and player not in room['round_answers']:
+                room['round_answers'][player] = answers
+                with open('rooms.json', 'w') as _file:
+                    json.dump(rooms, _file, indent=4)
+                    print("===Abel to write answer===")
+                    print(
+                        "THE ANSWERS COLLECTED", room['round_answers'].keys(),
+                        room['players']
+                    )
+                    print(
+                        "THE EXPECTED KINI:: ",
+                        len(room['round_answers'].keys()) == len(room['players'])
+                    )
+                if len(room['round_answers'].keys()) == len(room['players']):
+                    print('THIS IS WORKING!')
+                    # calculate results
+                    scores = calculate_results(room['round_answers'], letter)
+                    print(f"The scores are: {scores}")
+                    update_scores(room, scores)
+                    room['round_answers'] = {}
+                    with open('rooms.json', 'w') as _file:
+                        json.dump(rooms, _file, indent=4)
+                    return room['player_to_score']   # signal
+    finally:
+        lock.release_write()
 
 
 def update_scores(room, new_scores):
