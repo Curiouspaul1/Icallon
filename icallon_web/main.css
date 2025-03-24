@@ -384,3 +384,59 @@ button:active {
     width: 30px;
     height: 30px;
 }
+
+#instructions-button {
+    background-color: #f0ad4e; /* A different color, e.g., orange */
+    color: white;
+    /* Remove primary style if needed */
+}
+
+#instructions-button:hover {
+    background-color: #d89232;
+}
+
+/* Instructions Popup Styles */
+#instructions-overlay {
+    position: fixed; /* Fixed to cover the whole viewport */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    z-index: 1001; /* Higher than help-overlay if it's open at the same time, adjust as needed */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#instructions-content {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    position: relative; /* For absolute positioning of close button */
+}
+
+#instructions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+#instructions-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+#instructions-close {
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+}
+
+#instructions-body {
+    line-height: 1.6;
+    color: #555;
+}
