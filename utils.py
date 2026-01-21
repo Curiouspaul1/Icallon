@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import nltk
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 
 from geopy import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from nltk.corpus import words
 from names_dataset import NameDataset
 
@@ -118,6 +120,16 @@ def getFile(filename: str) -> dict:
 
 
 @execute_action(filename='rooms.json')
+def get_room_config(rooms, room_id):
+    """Returns static config like categories and alphabet"""
+    if room_id in rooms:
+        return Resp(routine_resp={
+            'categories': rooms[room_id].get('categories', []),
+            'allowed_letters': rooms[room_id].get('allowed_letters', "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        })
+
+
+@execute_action(filename='rooms.json')
 def addToRoom(rooms: dict, room_id: str, player: str) -> None:
     if room_id in rooms:
         rooms[room_id]['players'].append(player)
@@ -130,19 +142,27 @@ def addToRoom(rooms: dict, room_id: str, player: str) -> None:
 
 
 @execute_action(filename='rooms.json')
-def indexRoom(rooms, room_id):
+def indexRoom(rooms, room_id, categories=None, allowed_letters=None):
+    if not categories:
+        categories = ['Name', 'Animal', 'Place', 'Thing']
+    if not allowed_letters:
+        allowed_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        
     rooms[room_id] = {
         'ptr': 0,
         'pos': 0,
         'curr_ans_count': 0,
         'players': [],
         'letters': [],
+        'allowed_letters': allowed_letters,
+        'categories': categories,
+        'turn_player': None, # PERSISTENT TURN PLAYER
         'player_to_pos': {},
         'round_answers': {},
         'player_to_score': {},
-        'game_started': False
+        'game_started': False,
+        'last_interaction': time.time()
     }
-
     return Resp(file_json=rooms)
 
 
@@ -150,6 +170,23 @@ def is_in_session(room_id):
     rooms = getFile('rooms.json')
     if room_id in rooms:
         return rooms[room_id]['game_started']
+
+
+@execute_action(filename='rooms.json')
+def set_turn_player(rooms, room_id, player):
+    if room_id in rooms:
+        rooms[room_id]['turn_player'] = player
+        return Resp(file_json=rooms)
+
+@execute_action(filename='rooms.json')
+def get_turn_player(rooms, room_id):
+    if room_id in rooms:
+        return Resp(routine_resp=rooms[room_id].get('turn_player'))
+
+@execute_action(filename='rooms.json')
+def get_room_categories(rooms, room_id):
+    if room_id in rooms:
+        return Resp(routine_resp=rooms[room_id].get('categories', []))
 
 
 @execute_action(filename='rooms.json')
@@ -279,13 +316,29 @@ def is_valid_word(word):
 
 
 def is_animal(word):
-    with open('animals_names.txt') as fp:
-        animals = fp.readlines()[0]  # only one line in file
-        return word in animals
+    try:
+        # Use absolute path to be safe
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(base_path, 'animals_names.txt')
+        
+        with open(file_path, 'r') as fp:
+            content = fp.read().lower()
+            return word.lower() in content
+    except Exception as e:
+        print(f"Error checking animal: {e}")
+        return False
 
 
 def is_place(name):
-    return geolocator.geocode(name) is not None
+    # CRITICAL FIX: Timeout added to prevent infinite hang
+    try:
+        return geolocator.geocode(name, timeout=2) is not None
+    except (GeocoderTimedOut, GeocoderUnavailable):
+        print(f"Geocoding timed out for {name}")
+        return False # Fallback: let players vote if API fails? Or auto-fail.
+    except Exception as e:
+        print(f"Geocoding error: {e}")
+        return False
 
 
 def calculate_results(batch_answers, letter):
@@ -368,3 +421,75 @@ def clean_rooms():
             json.dump(tmp_rooms, fp)
     finally:
         lock.release_write()
+
+
+def get_answer_validity(answers, letter):
+    """
+    Categorizes answers. 
+    - Standard categories (Name, Animal, Place, Thing): Checked against dictionary.
+    - Custom categories: AUTOMATICALLY 'needs_vote' (if start letter is correct).
+    """
+    func_mappings = {
+        'Name': is_name,
+        'Animal': is_animal,
+        'Thing': is_valid_word,
+        'Place': is_place
+    }
+    
+    report = {}
+    target_letter = letter.lower()
+    
+    for category, word in answers.items():
+        clean_word = word.strip()
+        if not clean_word: 
+            continue 
+            
+        # 1. Check Starting Letter (Universal Rule)
+        if not clean_word.lower().startswith(target_letter):
+            report[category] = {
+                'word': clean_word,
+                'status': 'invalid' 
+            }
+            continue
+
+        # 2. Check if it's a Standard Category or Custom
+        # We match keys case-insensitively or exact match depending on how you send them.
+        # Assuming we send "Name", "Animal" etc. Title case.
+        
+        if category in func_mappings:
+            # Standard: Dictionary Check
+            try:
+                is_recognized = func_mappings[category](clean_word)
+            except Exception:
+                is_recognized = False
+                
+            if is_recognized:
+                report[category] = {'word': clean_word, 'status': 'valid'}
+            else:
+                report[category] = {'word': clean_word, 'status': 'needs_vote'}
+        else:
+            # Custom: Force Vote (Backend doesn't know "Anime" or "Movies")
+            report[category] = {'word': clean_word, 'status': 'needs_vote'}
+            
+    return report
+
+@execute_action(filename='rooms.json')
+def commit_round_scores(rooms, room_id, final_scores):
+    """
+    Updates the player scores in the DB after the round is finalized.
+    """
+    if room_id in rooms:
+        room = rooms[room_id]
+        current_scores = room['player_to_score']
+        
+        for player, points in final_scores.items():
+            if player not in current_scores:
+                current_scores[player] = 0
+            current_scores[player] += points
+            
+        # Clear round answers to reset for next round
+        room['round_answers'] = {}
+        room['last_interaction'] = time.time()
+        
+        return Resp(file_json=rooms, routine_resp=current_scores)
+
