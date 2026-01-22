@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+  <style>
+    .icon { fill: #DE6449; }
+  </style>
+
+  <path class="icon" d="M30 5 C 10 5 0 15 0 30 C 0 45 10 50 20 52 L 20 60 L 35 52 C 50 52 60 40 60 25 C 60 10 45 5 30 5 Z M 30 15 C 40 15 45 20 45 30 C 45 40 40 45 30 45 C 25 45 20 40 15 40 L 15 35 C 15 20 20 15 30 15 Z" />
+  
+  <circle cx="30" cy="30" r="6" fill="white" />
+</svg>

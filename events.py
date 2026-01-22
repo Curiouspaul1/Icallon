@@ -19,6 +19,39 @@ from utils import (
 
 # In-memory storage for the active round state
 round_states = {}
+turn_timers = {}
+
+
+def start_turn_timer(room_id):
+    """Starts a 10s timer to auto-skip turn if no letter is picked."""
+    if room_id in turn_timers:
+        gevent.kill(turn_timers[room_id])
+    
+    turn_timers[room_id] = gevent.spawn_later(10, handle_turn_timeout, room_id)
+
+def cancel_turn_timer(room_id):
+    """Cancels the turn timer (e.g., when letter is picked)."""
+    if room_id in turn_timers:
+        gevent.kill(turn_timers[room_id])
+        del turn_timers[room_id]
+
+def handle_turn_timeout(room_id):
+    """Executed when timer expires: Skips to next player."""
+    try:
+        # Notify room
+        ioclient.emit(
+            'info_toast',
+            {'message': "⏳ Time's up! Skipping turn..."},
+            to=room_id
+        )
+        # Clean up timer reference
+        if room_id in turn_timers:
+            del turn_timers[room_id]
+        # Trigger next turn logic
+        next_player_turn({'room_id': room_id})
+    except Exception as e:
+        print(f"Error in turn timeout: {e}")
+
 
 @ioclient.on('connect')
 def connect(*args):
@@ -44,6 +77,9 @@ def disconnect(reason):
 
 @ioclient.on('join')
 def join(data):
+    if 'user_id' not in session:
+        emit('error', {'message': "Connection lost. Please refresh the page."})
+        return
     username = session['user_id']
     room = data['roomID']
     players = get_players(room)
@@ -93,11 +129,13 @@ def start_game(data):
     }, to=room_id)
     ioclient.emit('private_player_turn', {'disabledLetters': get_used_letters(room_id)}, to=get_sid(player))
     ioclient.emit('public_player_turn', player, to=room_id)
+    start_turn_timer(room_id)
 
 @ioclient.on('letter_selected')
 def letter_selected(data):
     letter = data['letter']
     room_id = data['room_id']
+    cancel_turn_timer(room_id)
     turn_player = session['user_id']
     
     # Save State
@@ -121,6 +159,7 @@ def next_player_turn(data):
 
     ioclient.emit('private_player_turn', {'disabledLetters': used_letters}, to=client_id)
     ioclient.emit('public_player_turn', player, to=room_id)
+    start_turn_timer(room_id)
 
 
 @ioclient.on('player_answer')
@@ -172,9 +211,19 @@ def handle_votes(data):
     room_id = data['room_id']
     state = round_states.get(room_id)
     if not state: return
+
+    # Update counts
     for item in state['contested_items']:
-        if data['votes'].get(item['id']): item['votes_yes'] += 1
-        else: item['votes_no'] += 1
+        if data['votes'].get(item['id']):
+            item['votes_yes'] += 1
+        else:
+            item['votes_no'] += 1
+
+    # --- NEW: BROADCAST LIVE VOTES ---
+    # Send the updated list so clients can see the numbers go up
+    ioclient.emit('vote_update', state['contested_items'], room=room_id)
+    # ---------------------------------
+
     state['votes_cast_count'] += 1
     if state['votes_cast_count'] >= len(get_players(room_id)):
         finalize_scores(room_id)
@@ -183,19 +232,32 @@ def finalize_scores(room_id):
     state = round_states[room_id]
     letter = state['letter'].lower()
     round_scores = {}
+
     for player, p_answers in state['answers'].items():
         points = 0
         validity = get_answer_validity(p_answers, letter)
+        
         for cat, details in validity.items():
             is_valid = False
-            if details['status'] == 'valid': is_valid = True
+            
+            if details['status'] == 'valid':
+                is_valid = True
             elif details['status'] == 'needs_vote':
-                item = next((x for x in state['contested_items'] if x['player'] == player and x['word'] == details['word']), None)
-                if item and item['votes_yes'] >= item['votes_no']: is_valid = True
-            if is_valid: points += 10
+                item = next((x for x in state['contested_items'] 
+                             if x['player'] == player and x['word'] == details['word']), None)
+                if item:
+                    # Tie-breaker: Yes wins ties (benefit of doubt)
+                    if item['votes_yes'] >= item['votes_no']:
+                        is_valid = True
+            
+            if is_valid:
+                points += 10 
+
         round_scores[player] = points
+
     all_scores = commit_round_scores(room_id, round_scores)
     del round_states[room_id]
+
     ioclient.emit('round_result', all_scores, room=room_id)
     gevent.sleep(10)
     next_player_turn({'room_id': room_id})
