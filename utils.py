@@ -435,34 +435,34 @@ def get_answer_validity(answers, letter):
         'Thing': is_valid_word,
         'Place': is_place
     }
-    
+
     report = {}
     target_letter = letter.lower()
-    
+
     for category, word in answers.items():
         clean_word = word.strip()
-        if not clean_word: 
-            continue 
-            
+        if not clean_word:
+            continue
+
         # 1. Check Starting Letter (Universal Rule)
         if not clean_word.lower().startswith(target_letter):
             report[category] = {
                 'word': clean_word,
-                'status': 'invalid' 
+                'status': 'invalid'
             }
             continue
 
         # 2. Check if it's a Standard Category or Custom
         # We match keys case-insensitively or exact match depending on how you send them.
         # Assuming we send "Name", "Animal" etc. Title case.
-        
+
         if category in func_mappings:
             # Standard: Dictionary Check
             try:
                 is_recognized = func_mappings[category](clean_word)
             except Exception:
                 is_recognized = False
-                
+
             if is_recognized:
                 report[category] = {'word': clean_word, 'status': 'valid'}
             else:
@@ -470,8 +470,9 @@ def get_answer_validity(answers, letter):
         else:
             # Custom: Force Vote (Backend doesn't know "Anime" or "Movies")
             report[category] = {'word': clean_word, 'status': 'needs_vote'}
-            
+
     return report
+
 
 @execute_action(filename='rooms.json')
 def commit_round_scores(rooms, room_id, final_scores):

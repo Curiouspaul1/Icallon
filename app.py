@@ -41,7 +41,7 @@ app.config['SESSION_CACHELIB'] = FileSystemCache(
     threshold=500,
     cache_dir="sess"
 )
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
