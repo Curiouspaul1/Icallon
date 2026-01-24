@@ -293,7 +293,10 @@
             let activeInputs = {};
             let customCategories = [];
 
-            if (storedUsername) { $('#username').val(storedUsername); connectSession(storedUsername); }
+            if (storedUsername) {
+                $('#username').val(storedUsername);
+                connectSession(storedUsername);
+            }
             else { $('#username-screen').show(); }
 
             initAlphaGrid();
