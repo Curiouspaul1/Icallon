@@ -305,7 +305,7 @@
             });
 
             function setupSocket() {
-                socket = io({ withCredentials: true, transports: ['websocket', 'polling'] });
+                socket = io({ withCredentials: true, transports: ['polling'] });
                 socket.on('error', (data) => { alert(data.message); $('#submit-game-key').prop('disabled', false).text('JOIN'); });
                 socket.on('game_code', (code) => { gameCode = code; $('#display-game-code').text(code); switchScreen('create-game-screen'); });
                 
