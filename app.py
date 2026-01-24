@@ -115,7 +115,7 @@ def add_session():
         }, 400
     session['user_id'] = requested_name
     print(f"New session registered: {session['user_id']}")
-    
+
     return {
         'status': 'success',
         'message': ''

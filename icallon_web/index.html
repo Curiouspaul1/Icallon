@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Icallon🗣️ | Multiplayer Word Game</title>
     <link rel="icon" type="image/svg+xml" href="fav.svg">
@@ -9,41 +10,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         .add-cat-trigger-btn {
-            background: transparent; color: #777; border: 2px dashed #ccc; width: 100%;
-            border-radius: 8px; padding: 10px; cursor: pointer; font-weight: bold; margin-bottom: 15px;
+            background: transparent;
+            color: #777;
+            border: 2px dashed #ccc;
+            width: 100%;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 15px;
         }
-        .add-cat-trigger-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .custom-cat-input-group { display: flex; gap: 5px; margin-bottom: 15px; }
-        
-        .alpha-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; text-align: left; }
-        .alpha-options { display: flex; gap: 20px; margin-bottom: 15px; }
-        .alpha-grid { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 10px; }
+
+        .add-cat-trigger-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .custom-cat-input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .alpha-section {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            text-align: left;
+        }
+
+        .alpha-options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .alpha-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
         .alpha-check-label {
-            display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center;
-            border: 1px solid #ddd; border-radius: 5px; cursor: pointer; user-select: none;
-            font-weight: bold; background-color: #f9f9f9; color: #bbb; transition: all 0.2s;
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: bold;
+            background-color: #f9f9f9;
+            color: #bbb;
+            transition: all 0.2s;
         }
-        .alpha-check-input { display: none; }
-        .alpha-check-input:checked + .alpha-check-label {
-            background-color: var(--primary); color: white; border-color: var(--primary);
+
+        .alpha-check-input {
+            display: none;
+        }
+
+        .alpha-check-input:checked+.alpha-check-label {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
             box-shadow: 0 2px 5px rgba(222, 100, 73, 0.4);
         }
+
         .alpha-legend {
-            display: flex; justify-content: center; gap: 20px; margin-bottom: 15px;
-            font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 8px; border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #666;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 8px;
         }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .legend-sample { width: 20px; height: 20px; border-radius: 3px; display: inline-block; }
-        .legend-sample.active { background-color: var(--primary); }
-        .legend-sample.inactive { background-color: #f9f9f9; border: 1px solid #ddd; }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-sample {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .legend-sample.active {
+            background-color: var(--primary);
+        }
+
+        .legend-sample.inactive {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+
         .vote-live-tally {
-            margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;
-            display: flex; gap: 15px; font-weight: bold; font-size: 0.9rem; color: #555;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #555;
         }
-        .tally-yes { color: #27ae60; }
-        .tally-no { color: #c0392b; }
+
+        .tally-yes {
+            color: #27ae60;
+        }
+
+        .tally-no {
+            color: #c0392b;
+        }
     </style>
 </head>
+
 <body>
     <div class="app-background"></div>
     <div class="container">
@@ -58,7 +149,8 @@
         <div id="username-screen" class="game-screen">
             <h2>Who are you?</h2>
             <input type="text" id="username" placeholder="Enter Nickname" autocomplete="off"><br>
-            <button type="button" class="pure-button btn-action" id="submit-username">ENTER <i class="fas fa-arrow-right"></i></button>
+            <button type="button" class="pure-button btn-action" id="submit-username">ENTER <i
+                    class="fas fa-arrow-right"></i></button>
         </div>
 
         <div id="game-selection-screen" class="game-screen" style="display: none;">
@@ -159,10 +251,10 @@
         </div>
 
         <div id="results-overlay" class="overlay" style="display: none;">
-            <div class="loader"></div> 
+            <div class="loader"></div>
             <p>Waiting...</p>
         </div>
-        
+
         <div id="help-overlay" class="overlay" style="display:none;">
             <div class="modal-content">
                 <div class="modal-header">
@@ -176,13 +268,15 @@
                 </div>
             </div>
         </div>
-        <audio id="backgroundMusic" loop><source src="sounds/theme1.mp3" type="audio/mpeg"></audio>
+        <audio id="backgroundMusic" loop>
+            <source src="sounds/theme1.mp3" type="audio/mpeg">
+        </audio>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             let socket;
             let storedUsername = sessionStorage.getItem('username');
             let gameCode = '';
@@ -191,12 +285,12 @@
             let roundTimer;
             let turnTimerInterval;
             // let serverURL = 'http://127.0.0.1:5000/';
-            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            let serverURL = '';
-            let activeCategories = []; 
-            let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
+            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            // let serverURL = '';
+            let activeCategories = [];
+            let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             let currentCatIndex = 0;
-            let activeInputs = {}; 
+            let activeInputs = {};
             let customCategories = [];
 
             if (storedUsername) { $('#username').val(storedUsername); connectSession(storedUsername); }
@@ -209,19 +303,19 @@
                     let c = alpha[i];
                     $('#alpha-grid-items').append(`<label><input type="checkbox" class="alpha-check-input" value="${c}" checked><span class="alpha-check-label">${c}</span></label>`);
                 }
-                $('input[name="alpha-mode"]').change(function() {
-                    if($(this).val() === 'custom') $('#custom-alpha-container').slideDown();
+                $('input[name="alpha-mode"]').change(function () {
+                    if ($(this).val() === 'custom') $('#custom-alpha-container').slideDown();
                     else $('#custom-alpha-container').slideUp();
                 });
             }
 
             $('#btn-goto-setup').click((e) => { e.preventDefault(); switchScreen('game-setup-screen'); });
-            $('#show-add-cat-ui').click(function() { $(this).hide(); $('.custom-cat-input-group').css('display', 'flex'); $('#new-cat-name').focus(); });
-            $('#add-cat-btn').click(function(e) {
+            $('#show-add-cat-ui').click(function () { $(this).hide(); $('.custom-cat-input-group').css('display', 'flex'); $('#new-cat-name').focus(); });
+            $('#add-cat-btn').click(function (e) {
                 e.preventDefault();
                 let val = $('#new-cat-name').val().trim();
                 val = val.charAt(0).toUpperCase() + val.slice(1);
-                if(val && !customCategories.includes(val)) { customCategories.push(val); renderCustomTags(); }
+                if (val && !customCategories.includes(val)) { customCategories.push(val); renderCustomTags(); }
                 $('#new-cat-name').val(''); $('.custom-cat-input-group').hide(); $('#show-add-cat-ui').show();
             });
 
@@ -234,61 +328,61 @@
                 });
             }
 
-            $('#create-game-confirm').click((e) => { 
-                e.preventDefault(); 
+            $('#create-game-confirm').click((e) => {
+                e.preventDefault();
                 isHost = true;
                 let pendingCat = $('#new-cat-name').val().trim();
-                if(pendingCat) {
-                     pendingCat = pendingCat.charAt(0).toUpperCase() + pendingCat.slice(1);
-                     if (!customCategories.includes(pendingCat)) customCategories.push(pendingCat);
+                if (pendingCat) {
+                    pendingCat = pendingCat.charAt(0).toUpperCase() + pendingCat.slice(1);
+                    if (!customCategories.includes(pendingCat)) customCategories.push(pendingCat);
                 }
                 let selectedCats = [];
-                $('.cat-check:checked').each(function() { selectedCats.push($(this).val()); });
+                $('.cat-check:checked').each(function () { selectedCats.push($(this).val()); });
                 selectedCats = selectedCats.concat(customCategories);
-                if(selectedCats.length < 1) { alert("Pick at least one category!"); return; }
+                if (selectedCats.length < 1) { alert("Pick at least one category!"); return; }
                 let alphaMode = $('input[name="alpha-mode"]:checked').val();
                 let selectedAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                 if (alphaMode === 'custom') {
                     let chars = [];
-                    $('.alpha-check-input:checked').each(function() { chars.push($(this).val()); });
-                    if(chars.length < 1) { alert("Pick at least one letter!"); return; }
+                    $('.alpha-check-input:checked').each(function () { chars.push($(this).val()); });
+                    if (chars.length < 1) { alert("Pick at least one letter!"); return; }
                     selectedAlpha = chars.join("");
                 }
-                socket.emit('create', { categories: selectedCats, allowed_letters: selectedAlpha }); 
+                socket.emit('create', { categories: selectedCats, allowed_letters: selectedAlpha });
             });
 
-            $('#username').keypress(function(e) { if(e.which == 13) { e.preventDefault(); $('#submit-username').click(); } });
-            $('#submit-username').click(function(e) {
-                if(e) e.preventDefault();
+            $('#username').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#submit-username').click(); } });
+            $('#submit-username').click(function (e) {
+                if (e) e.preventDefault();
                 let user = $('#username').val().trim();
-                if(user) { $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Checking...'); connectSession(user); }
+                if (user) { $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Checking...'); connectSession(user); }
                 else { $('#username').addClass('invalid').focus(); }
             });
             $('#join-game-button').click((e) => { e.preventDefault(); switchScreen('join-game-screen'); });
-            $('#submit-game-key').click(function(e) { 
+            $('#submit-game-key').click(function (e) {
                 e.preventDefault(); gameCode = $('#game-key').val().trim();
-                if(!gameCode) { alert("Please enter a code"); return; }
+                if (!gameCode) { alert("Please enter a code"); return; }
                 $(this).prop('disabled', true).text('Joining...'); isHost = false;
-                socket.emit('join', { roomID: gameCode }); 
+                socket.emit('join', { roomID: gameCode });
             });
             $('#start-game-button').click((e) => { e.preventDefault(); socket.emit('start', { room_id: gameCode }); });
 
-            $('#next-field').click(function(e) {
+            $('#next-field').click(function (e) {
                 e.preventDefault();
                 let catName = activeCategories[currentCatIndex];
                 activeInputs[catName] = $('#current-input').val();
                 if (currentCatIndex < activeCategories.length - 1) { currentCatIndex++; updateInputUI(); }
-                else { sendPlayerAnswers(); } 
+                else { sendPlayerAnswers(); }
             });
-            $('#current-input').keypress(function(e) { if(e.which == 13) { e.preventDefault(); $('#next-field').click(); } });
-            $('#submit-votes').click(function(e) {
+            $('#current-input').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#next-field').click(); } });
+            $('#submit-votes').click(function (e) {
                 e.preventDefault();
                 let votes = {};
-                $('.voting-card').each(function() {
+                $('.voting-card').each(function () {
                     let id = $(this).data('id');
                     if ($(this).find('input[type="radio"]').length > 0) {
                         let val = $(this).find('input[type="radio"]:checked').val();
-                        votes[id] = (val !== 'no'); 
+                        votes[id] = (val !== 'no');
                     }
                 });
                 $(this).prop('disabled', true).text("Watching Results...");
@@ -300,15 +394,23 @@
             const bgMusic = document.getElementById('backgroundMusic');
             bgMusic.volume = 0.2;
             $('#sound-toggle').click(() => {
-                if(bgMusic.muted) { bgMusic.muted = false; $('#sound-toggle i').attr('class', 'fas fa-volume-up'); }
+                if (bgMusic.muted) { bgMusic.muted = false; $('#sound-toggle i').attr('class', 'fas fa-volume-up'); }
                 else { bgMusic.muted = true; $('#sound-toggle i').attr('class', 'fas fa-volume-mute'); }
             });
 
             function setupSocket() {
-                socket = io({ withCredentials: true, transports: ['polling'] });
+                socket = io(
+                    { 
+                        withCredentials: true,
+                        transports: ['websocket', 'polling'],
+                        auth: {
+                            username: sessionStorage.getItem('username')
+                        }
+                    }
+                );
                 socket.on('error', (data) => { alert(data.message); $('#submit-game-key').prop('disabled', false).text('JOIN'); });
                 socket.on('game_code', (code) => { gameCode = code; $('#display-game-code').text(code); switchScreen('create-game-screen'); });
-                
+
                 socket.on('info_toast', (data) => {
                     // Simple toast notification fallback
                     let t = $(`<div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#e74c3c; color:white; padding:10px 20px; border-radius:5px; z-index:9999;">${data.message}</div>`);
@@ -326,39 +428,39 @@
                 socket.on('player_left', (players) => {
                     $('#lobby-avatars').empty(); $('#player-avatars').empty();
                     players.forEach(p => { let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; $('#lobby-avatars').append(html); $('#player-avatars').append(html); });
-                    if(isHost) $('#start-game-button').prop('disabled', players.length < 2);
+                    if (isHost) $('#start-game-button').prop('disabled', players.length < 2);
                 });
                 socket.on('game_started', (data) => {
                     activeCategories = data.categories; gameAlphabet = data.allowed_letters;
                     switchScreen('game-arena'); bgMusic.play().catch(e => console.log("Audio requires interaction"));
                 });
-                
-                socket.on('private_player_turn', (data) => { 
-                    showLetterSelection(data.disabledLetters); 
+
+                socket.on('private_player_turn', (data) => {
+                    showLetterSelection(data.disabledLetters);
                     startTurnCountdown(10); // Start 10s visual timer
                 });
-                
-                socket.on('public_player_turn', (player) => { 
-                    if (player !== sessionStorage.getItem('username')) { 
-                        $('#letter-selection').hide(); 
+
+                socket.on('public_player_turn', (player) => {
+                    if (player !== sessionStorage.getItem('username')) {
+                        $('#letter-selection').hide();
                         // Visual timer for others too
                         let t = 10;
                         $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
                         clearInterval(turnTimerInterval);
                         turnTimerInterval = setInterval(() => {
                             t--;
-                            if(t>0) $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
+                            if (t > 0) $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
                             else clearInterval(turnTimerInterval);
                         }, 1000);
-                    } 
+                    }
                 });
-                
+
                 socket.on('letter_chosen', (letter) => {
                     clearInterval(turnTimerInterval); // Stop turn timer
                     currentLetter = letter; $('#letter-selection').hide(); $('#turn-indicator').text(`Current Letter: ${letter}`);
                     currentCatIndex = 0; activeInputs = {}; updateInputUI(); $('#dynamic-inputs-area').fadeIn(); startTimer(30);
                 });
-                
+
                 socket.on('force_submit', () => {
                     if ($('#dynamic-inputs-area').is(':visible')) {
                         sendPlayerAnswers("Calculating results...");
@@ -366,7 +468,7 @@
                         showOverlay("Calculating results...");
                     }
                 });
-                
+
                 socket.on('start_voting', (contested) => {
                     hideOverlay(); $('#game-arena').hide(); $('#voting-container').empty();
                     $('#submit-votes').prop('disabled', false).text('Submit Votes');
@@ -387,8 +489,8 @@
 
                 socket.on('round_result', (scores) => {
                     hideOverlay(); $('#voting-screen').hide(); $('#game-arena').show(); $('#leaderboard-content').empty();
-                    let sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
-                    sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i+1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); });
+                    let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+                    sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i + 1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); });
                     $('#leaderboard').fadeIn(); setTimeout(() => $('#leaderboard').fadeOut(), 5000);
                 });
             }
@@ -410,7 +512,7 @@
                 $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
                 turnTimerInterval = setInterval(() => {
                     seconds--;
-                    if(seconds >= 0) $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
+                    if (seconds >= 0) $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
                     else clearInterval(turnTimerInterval);
                 }, 1000);
             }
@@ -419,10 +521,10 @@
                 clearInterval(roundTimer); $('#countdown').text(sec).show();
                 roundTimer = setInterval(() => {
                     sec--; $('#countdown').text(sec);
-                    if(sec < 0) { 
-                        clearInterval(roundTimer); 
-                        $('#countdown').hide(); 
-                        sendPlayerAnswers("Calculating results..."); 
+                    if (sec < 0) {
+                        clearInterval(roundTimer);
+                        $('#countdown').hide();
+                        sendPlayerAnswers("Calculating results...");
                     }
                 }, 1000);
             }
@@ -431,13 +533,13 @@
                 let catName = activeCategories[currentCatIndex];
                 $('#current-category-label').text(catName); $('#current-input').val(activeInputs[catName] || ''); $('#current-input').focus();
                 $('#dynamic-dots').empty();
-                activeCategories.forEach((_, i) => { let d = $('<span class="dot"></span>'); if(i === currentCatIndex) d.addClass('active'); $('#dynamic-dots').append(d); });
+                activeCategories.forEach((_, i) => { let d = $('<span class="dot"></span>'); if (i === currentCatIndex) d.addClass('active'); $('#dynamic-dots').append(d); });
                 $('#next-field').text(currentCatIndex === activeCategories.length - 1 ? "FINISH!" : "NEXT");
             }
-            
+
             function sendPlayerAnswers(customMsg) {
                 if ($('#dynamic-inputs-area').is(':visible')) { let catName = activeCategories[currentCatIndex]; activeInputs[catName] = $('#current-input').val(); }
-                clearInterval(roundTimer); $('#dynamic-inputs-area').hide(); 
+                clearInterval(roundTimer); $('#dynamic-inputs-area').hide();
                 let msg = customMsg || "Waiting for others...";
                 showOverlay(msg);
                 socket.emit('player_answer', { answers: activeInputs, room_id: gameCode, letter: currentLetter });
@@ -445,7 +547,8 @@
             function showOverlay(msg) { $('#results-overlay').fadeIn().find('p').text(msg); }
             function hideOverlay() { $('#results-overlay').fadeOut(); }
             function connectSession(user) {
-                $.ajax({ type: 'POST', url: `${serverURL}/session`, data: JSON.stringify({ session: user }), contentType: 'application/json', xhrFields: { withCredentials: true },
+                $.ajax({
+                    type: 'POST', url: `${serverURL}/session`, data: JSON.stringify({ session: user }), contentType: 'application/json', xhrFields: { withCredentials: true },
                     success: () => { sessionStorage.setItem('username', user); switchScreen('game-selection-screen'); setupSocket(); },
                     error: (xhr) => { $('#submit-username').prop('disabled', false).html('ENTER <i class="fas fa-arrow-right"></i>'); alert("Error: " + (xhr.responseJSON ? xhr.responseJSON.message : "Connection Failed")); }
                 });
@@ -453,4 +556,5 @@
         });
     </script>
 </body>
+
 </html>
