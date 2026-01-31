@@ -256,6 +256,7 @@
         </div>
 
         <div id="voting-screen" class="game-screen" style="display: none;">
+            <div id="voting-timer" class="timer-badge" style="margin: 0 auto 20px auto; display:none;">30</div>
             <h2>⚠ Democracy Time ⚠</h2>
             <p>Vote on words the app couldn't verify:</p>
             <div id="voting-container"></div>
@@ -303,10 +304,11 @@
             let turnTimerInterval;
             const urlParams = new URLSearchParams(window.location.search);
             let inviteCode = urlParams.get('code'); // e.g., ?code=ABCD
+            let votingTimerInterval;
 
             // Your Cloud Run URL
-            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            // let serverURL = 'http://127.0.0.1:5000'
+            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            let serverURL = 'http://127.0.0.1:5000'
 
             let activeCategories = [];
             let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -494,17 +496,75 @@
                 socket.on('force_submit', () => { if ($('#dynamic-inputs-area').is(':visible')) sendPlayerAnswers("Calculating results..."); else showOverlay("Calculating results..."); });
 
                 socket.on('start_voting', (contested) => {
-                    hideOverlay(); $('#game-arena').hide(); $('#voting-container').empty(); $('#submit-votes').prop('disabled', false).text('Submit Votes');
+                    hideOverlay(); 
+                    $('#game-arena').hide(); 
+                    $('#voting-container').empty();
+                    let timeLeft = 30;
+                    $('#voting-timer').text(timeLeft).show();
+                    clearInterval(votingTimerInterval);
+                    votingTimerInterval = setInterval(() => {
+                        timeLeft--;
+                        $('#voting-timer').text(timeLeft);
+                        if (timeLeft <= 0) clearInterval(votingTimerInterval);
+                    }, 1000);
+                    let myUsername = localStorage.getItem('username');
+                    let itemsToVoteOn = 0;
+
                     contested.forEach((item, i) => {
-                        let isMine = item.player === sessionStorage.getItem('username');
-                        let html = `<div class="voting-card" data-id="${item.id}"><div class="vote-meta">${item.category} by ${item.player}</div><div class="vote-word">${item.word}</div>${isMine ? '<div class="my-word">Your Word</div>' : `<div class="vote-opts"><label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label><label><input type="radio" name="v_${i}" value="no"> ❌ No</label></div>`}<div class="vote-live-tally"><span class="tally-yes" id="yes-${item.id}">✅ 0</span><span class="tally-no" id="no-${item.id}">❌ 0</span></div></div>`;
+                        let isMine = item.player === myUsername;
+                        
+                        // Count if this is something I can vote on
+                        if (!isMine) itemsToVoteOn++;
+
+                        let html = `
+                            <div class="voting-card" data-id="${item.id}">
+                                <div class="vote-meta">${item.category} by ${item.player}</div>
+                                <div class="vote-word">${item.word}</div>
+                                ${isMine ? 
+                                    '<div class="my-word">Your Word (Others will vote)</div>' : 
+                                    `<div class="vote-opts">
+                                        <label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label>
+                                        <label><input type="radio" name="v_${i}" value="no"> ❌ No</label>
+                                    </div>`
+                                }
+                                <div class="vote-live-tally">
+                                    <span class="tally-yes" id="yes-${item.id}">✅ 0</span>
+                                    <span class="tally-no" id="no-${item.id}">❌ 0</span>
+                                </div>
+                            </div>`;
                         $('#voting-container').append(html);
                     });
+
+                    // LOGIC: If I have nothing to vote on, auto-submit empty votes so game proceeds
+                    if (itemsToVoteOn === 0) {
+                        $('#submit-votes').hide();
+                        // Add a status message so they know what's happening
+                        if ($('#voting-status').length === 0) {
+                            $('#voting-screen h2').after('<p id="voting-status" style="color:#e67e22; font-weight:bold;">Waiting for others to vote on your words...</p>');
+                        } else {
+                            $('#voting-status').text("Waiting for others to vote on your words...").show();
+                        }
+                        
+                        // Tell server we are "done" voting (sending empty object)
+                        socket.emit('cast_votes', { room_id: gameCode, votes: {} });
+                    } else {
+                        $('#submit-votes').show().prop('disabled', false).text('Submit Votes');
+                        $('#voting-status').hide(); // Hide status message if it exists
+                    }
+                    
                     switchScreen('voting-screen');
                 });
                 socket.on('vote_update', (items) => { items.forEach(item => { $(`#yes-${item.id}`).text(`✅ ${item.votes_yes}`); $(`#no-${item.id}`).text(`❌ ${item.votes_no}`); }); });
 
-                socket.on('round_result', (scores) => { hideOverlay(); $('#voting-screen').hide(); $('#game-arena').show(); $('#leaderboard-content').empty(); let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]); sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i + 1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); }); $('#leaderboard').fadeIn(); setTimeout(() => $('#leaderboard').fadeOut(), 5000); });
+                socket.on('round_result', (scores) => {
+                    clearInterval(votingTimerInterval);
+                    $('#voting-timer').hide();
+                    hideOverlay(); $('#voting-screen').hide();
+                    $('#game-arena').show();
+                    $('#leaderboard-content').empty();
+                    let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]); sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i + 1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); }); $('#leaderboard').fadeIn(); setTimeout(() => $('#leaderboard').fadeOut(), 5000);
+                    }
+                );
             }
 
             // --- UI HELPERS ---
