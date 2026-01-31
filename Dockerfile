@@ -18,7 +18,7 @@ RUN echo "{}" > player_to_rooms.json \
     && echo "{}" > player_to_sid.json \
     && echo "{}" > rooms.json \
     && echo "{}" > sid_to_players.json \
-    && ehco "{}" > player_tokens.json
+    && echo "{}" > player_tokens.json
 
 # Grant write permissions to the current user
 RUN chmod 666 player_to_rooms.json player_to_sid.json rooms.json
