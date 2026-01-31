@@ -7,7 +7,7 @@ from flask_cors import CORS
 ioclient = SocketIO(
     logger=True, engineio_logger=True,
     cors_allowed_origins=[
-        "http://127.0.0.1:5500",
+        "http://127.0.0.1:5501",
         "https://icallon.netlify.app"
     ],
     manage_session=False,
@@ -22,11 +22,11 @@ def init(app):
     sess.init_app(app)
     cors.init_app(
         app, supports_credentials=True,
-        origins=["http://127.0.0.1:5500", "https://icallon.netlify.app"],
+        origins=["http://127.0.0.1:5501", "https://icallon.netlify.app"],
         resources={
             r"/*": {
                 "origins": [
-                    "http://127.0.0.1:5500",
+                    "http://127.0.0.1:5501",
                     "https://icallon.netlify.app"
                 ]
             }

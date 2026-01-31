@@ -1,10 +1,10 @@
 import gevent
 from flask import request
-from flask_socketio import emit, join_room, leave_room, send
+from flask_socketio import emit, join_room, leave_room
 import uuid
 
-import messages as MSG
-from extensions import ioclient, session
+# Note: 'session' import removed as we are replacing it
+from extensions import ioclient
 from utils import (
     genRoomId,
     addToRoom,
@@ -14,7 +14,7 @@ from utils import (
     indexRoom,
     get_player_turn,
     store_sid,
-    remove_sid,
+    remove_sid_if_matches,
     get_players,
     get_sid,
     is_in_session,
@@ -23,22 +23,25 @@ from utils import (
     cross_letter,
     get_answer_validity,
     commit_round_scores,
-    get_room_categories,
     get_room_config,
     set_turn_player,
     get_turn_player,
+    store_sid_to_username,
+    get_user_from_sid,
+    verify_and_register_user,
 )
 
-# In-memory storage for the active round state
+# In-memory storage for state that doesn't need to persist across server restarts
 round_states = {}
 turn_timers = {}
+
+# --- TIMERS ---
 
 
 def start_turn_timer(room_id):
     """Starts a 10s timer to auto-skip turn if no letter is picked."""
     if room_id in turn_timers:
         gevent.kill(turn_timers[room_id])
-
     turn_timers[room_id] = gevent.spawn_later(10, handle_turn_timeout, room_id)
 
 
@@ -52,42 +55,49 @@ def cancel_turn_timer(room_id):
 def handle_turn_timeout(room_id):
     """Executed when timer expires: Skips to next player."""
     try:
-        # Notify room
         ioclient.emit(
             "info_toast", {"message": "⏳ Time's up! Skipping turn..."}, to=room_id
         )
-        # Clean up timer reference
         if room_id in turn_timers:
             del turn_timers[room_id]
-        # Trigger next turn logic
         next_player_turn({"room_id": room_id})
     except Exception as e:
         print(f"Error in turn timeout: {e}")
 
 
+# --- CONNECTION HANDLERS ---
+
+
 @ioclient.on("connect")
 def connect(auth):
-    user_id = session.get("user_id", "")
-    if not user_id and (auth and 'username' in auth):
-        user_id = auth.get("username", None)
-        session["user_id"] = user_id
-    if user_id:
-        session["client_id"] = request.sid
-        store_sid(user_id, request.sid)
-    else:
-        disconnect("Username not specified on connect")
+    # 1. Validate Payload
+    if not auth or "username" not in auth or "token" not in auth:
+        print("❌ Rejected: Missing auth data")
         return False
 
+    username = auth["username"]
+    token = auth["token"]
 
-@ioclient.on("set-session")
-def set_session(data):
-    if "session" in data:
-        session["user_id"] = data["session"]
+    # 2. Check "Ownership" via persistent token storage
+    is_allowed = verify_and_register_user(username, token)
+
+    if not is_allowed:
+        print(f"❌ Rejected {username}: Token mismatch")
+        return False
+
+    # 3. Success - Map SID to Username (Reliable Source of Truth)
+    store_sid(username, request.sid)
+    store_sid_to_username(username, request.sid)
+
+    print(f"✅ Connected: {username}")
+    return True
 
 
 @ioclient.on("disconnect")
 def disconnect(reason):
-    player = session.get("user_id")
+    # Lookup user based on the disconnecting SID (RELIABLE)
+    player = get_user_from_sid(request.sid)
+
     if player:
         room_id = get_player_room(player)
         if room_id:
@@ -95,17 +105,26 @@ def disconnect(reason):
             remaining = get_players(room_id)
             if remaining:
                 emit("player_left", remaining, to=room_id)
-        remove_sid(player)
+
+        # Safe remove
+        remove_sid_if_matches(player, request.sid)
+
+
+# --- ROOM HANDLERS ---
 
 
 @ioclient.on("join")
 def join(data):
-    if "user_id" not in session:
-        emit("error", {"message": "Connection lost. Please refresh the page."})
+    # RELIABLE FETCH: Get user from SID
+    username = get_user_from_sid(request.sid)
+
+    if not username:
+        emit("error", {"message": "Connection lost. Please refresh."})
         return
-    username = session["user_id"]
+
     room = data["roomID"]
     players = get_players(room)
+
     if players is None:
         emit("error", {"message": "Room not found!"})
         return
@@ -115,6 +134,7 @@ def join(data):
     if is_in_session(room):
         emit("error", {"message": "Game started!"})
         return
+
     join_room(room)
     addToRoom(room, username)
     map_player_to_room(username, room)
@@ -123,13 +143,19 @@ def join(data):
 
 @ioclient.on("create")
 def new_room(data=None):
-    username = session["user_id"]
+    # RELIABLE FETCH
+    username = get_user_from_sid(request.sid)
+    if not username:
+        return
+
     roomID = genRoomId()
     cats = None
     alphabet = None
+
     if data and isinstance(data, dict):
         cats = data.get("categories")
         alphabet = data.get("allowed_letters")
+
     indexRoom(roomID, categories=cats, allowed_letters=alphabet)
     join_room(roomID)
     addToRoom(roomID, username)
@@ -141,12 +167,14 @@ def new_room(data=None):
 def start_game(data):
     room_id = data["room_id"]
     all_players = get_players(room_id)
-    if len(all_players) < 2:
-        emit("cant_start_game", MSG.LOW_PLAYER_COUNT)
+    if not all_players or len(all_players) < 2:
+        emit("cant_start_game", {"message": "Need at least 2 players"})
         return
+
     set_room_mode(room_id)
     player = get_player_turn(room_id)
     config = get_room_config(room_id)
+
     ioclient.emit(
         "game_started",
         {
@@ -156,27 +184,49 @@ def start_game(data):
         },
         to=room_id,
     )
+
     ioclient.emit(
         "private_player_turn",
         {"disabledLetters": get_used_letters(room_id)},
         to=get_sid(player),
     )
+
     ioclient.emit("public_player_turn", player, to=room_id)
     start_turn_timer(room_id)
 
 
+@ioclient.on('leave_room')
+def handle_leave_room(data):
+    room_id = data.get('room_id')
+    # Reliable fetch using SID
+    player = get_user_from_sid(request.sid)
+    if player and room_id:
+        # 1. Leave the Socket.IO room channel
+        leave_room(room_id)
+        # 2. Update the Game Data (Remove player from list)
+        removeFromRoom(room_id, player)
+        # 3. Notify remaining players
+        remaining = get_players(room_id)
+        if remaining:
+            emit('player_left', remaining, to=room_id)
+        # 4. Confirm to the user that they are out
+        emit('left_room_success')
+
+# --- GAMEPLAY HANDLERS --
 @ioclient.on("letter_selected")
 def letter_selected(data):
     letter = data["letter"]
     room_id = data["room_id"]
     cancel_turn_timer(room_id)
-    turn_player = session["user_id"]
 
-    # Save State
+    # RELIABLE FETCH
+    turn_player = get_user_from_sid(request.sid)
+
+    # Persist State
     cross_letter(room_id, letter)
-    set_turn_player(room_id, turn_player)  # Save to DB
+    set_turn_player(room_id, turn_player)
 
-    # Reset Round State (Memory)
+    # Memory State for active round
     round_states[room_id] = {
         "answers": {},
         "letter": letter,
@@ -191,11 +241,11 @@ def next_player_turn(data):
     room_id = data["room_id"]
     player = get_player_turn(room_id)
     used_letters = get_used_letters(room_id)
-    client_id = get_sid(player)
 
     ioclient.emit(
-        "private_player_turn", {"disabledLetters": used_letters}, to=client_id
+        "private_player_turn", {"disabledLetters": used_letters}, to=get_sid(player)
     )
+
     ioclient.emit("public_player_turn", player, to=room_id)
     start_turn_timer(room_id)
 
@@ -203,7 +253,8 @@ def next_player_turn(data):
 @ioclient.on("player_answer")
 def handle_player_answer(data):
     try:
-        player = session["user_id"]
+        # RELIABLE FETCH
+        player = get_user_from_sid(request.sid)
         room_id = data["room_id"]
         state = round_states.get(room_id)
         if not state:
@@ -211,14 +262,16 @@ def handle_player_answer(data):
 
         state["answers"][player] = data["answers"]
 
-        # Check turn player from DB for robustness
+        # If turn player submitted, force everyone else
         current_turn_player = get_turn_player(room_id)
         if player == current_turn_player:
-            print(f"Force submit triggered by {player}")
             emit("force_submit", {}, room=room_id)
 
-        if len(state["answers"]) == len(get_players(room_id)):
+        # If everyone submitted, validate
+        all_players = get_players(room_id)
+        if len(state["answers"]) >= len(all_players):
             process_validation(room_id)
+
     except Exception as e:
         print(f"Error in answer handler: {e}")
 
@@ -228,6 +281,7 @@ def process_validation(room_id):
         state = round_states[room_id]
         letter = state["letter"]
         contested = []
+
         for player, p_answers in state["answers"].items():
             report = get_answer_validity(p_answers, letter)
             for category, details in report.items():
@@ -243,10 +297,12 @@ def process_validation(room_id):
                         }
                     )
         state["contested_items"] = contested
+
         if contested:
             ioclient.emit("start_voting", contested, room=room_id)
         else:
             finalize_scores(room_id)
+
     except Exception as e:
         print(f"Error in validation: {e}")
 
@@ -258,20 +314,20 @@ def handle_votes(data):
     if not state:
         return
 
-    # Update counts
+    # Tally votes
     for item in state["contested_items"]:
         if data["votes"].get(item["id"]):
             item["votes_yes"] += 1
         else:
             item["votes_no"] += 1
 
-    # --- NEW: BROADCAST LIVE VOTES ---
-    # Send the updated list so clients can see the numbers go up
+    # Broadcast live updates
     ioclient.emit("vote_update", state["contested_items"], room=room_id)
-    # ---------------------------------
 
     state["votes_cast_count"] += 1
-    if state["votes_cast_count"] >= len(get_players(room_id)):
+    all_players = get_players(room_id)
+
+    if state["votes_cast_count"] >= len(all_players):
         finalize_scores(room_id)
 
 
@@ -286,7 +342,6 @@ def finalize_scores(room_id):
 
         for cat, details in validity.items():
             is_valid = False
-
             if details["status"] == "valid":
                 is_valid = True
             elif details["status"] == "needs_vote":
@@ -299,7 +354,7 @@ def finalize_scores(room_id):
                     None,
                 )
                 if item:
-                    # Tie-breaker: Yes wins ties (benefit of doubt)
+                    # Tie or Majority YES wins
                     if item["votes_yes"] >= item["votes_no"]:
                         is_valid = True
 

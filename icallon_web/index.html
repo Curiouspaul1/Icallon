@@ -211,7 +211,18 @@
         <div id="create-game-screen" class="game-screen" style="display: none;">
             <div class="room-code-display">
                 <small>ROOM CODE</small>
-                <span id="display-game-code">----</span>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span id="display-game-code" style="font-size: 2.5rem; letter-spacing: 5px;">----</span>
+                    <button id="copy-link-btn" class="icon-btn" style="background:none; border:none; font-size:1.2rem;"
+                        title="Copy Invite Link">
+                        <i class="fas fa-link"></i>
+                    </button>
+                </div>
+                <div id="qr-container" style="margin-top: 15px; display:none;">
+                    <img id="room-qr-code" src="" alt="Scan to Join"
+                        style="width: 120px; border-radius: 10px; border: 4px solid white;">
+                    <p style="font-size: 0.8rem; color: #777; margin-top: 5px;">Scan to Join</p>
+                </div>
             </div>
             <div id="player-list">
                 <h3>Players Joined</h3>
@@ -219,9 +230,15 @@
             </div>
             <button type="button" class="pure-button btn-action" id="start-game-button" disabled>START GAME</button>
             <p id="waiting-msg" style="display:none; color: #777;">Waiting for host to start...</p>
+            <button type="button" id="leave-lobby-btn" class="pure-button" style="background:none; border:none; color:#e74c3c; text-decoration:underline; margin-top:15px;">
+                Leave Room
+            </button>
         </div>
 
         <div id="game-arena" class="game-screen" style="display: none;">
+            <div id="exit-game-btn" class="icon-btn" style="position: absolute; top: -50px; right: 0; color: #e74c3c; font-size: 1.2rem;" title="Leave Game">
+                <i class="fas fa-sign-out-alt"></i>
+            </div>
             <div class="round-info">
                 <div id="turn-indicator">Waiting...</div>
                 <div id="countdown" class="timer-badge"></div>
@@ -284,20 +301,208 @@
             let isHost = false;
             let roundTimer;
             let turnTimerInterval;
-            // let serverURL = 'http://127.0.0.1:5000/';
-            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            // let serverURL = '';
+            const urlParams = new URLSearchParams(window.location.search);
+            let inviteCode = urlParams.get('code'); // e.g., ?code=ABCD
+
+            // Your Cloud Run URL
+            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            let serverURL = 'http://127.0.0.1:5000'
+
             let activeCategories = [];
             let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             let currentCatIndex = 0;
             let activeInputs = {};
             let customCategories = [];
 
+            // --- 1. TOKEN GENERATION ---
+            function getOrGenerateToken() {
+                let token = localStorage.getItem('player_token');
+                if (!token) {
+                    // Generate a random ID
+                    token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                    localStorage.setItem('player_token', token);
+                }
+                return token;
+            }
+
+            // --- 2. AUTO LOGIN / MANUAL LOGIN ---
             if (storedUsername) {
                 $('#username').val(storedUsername);
-                connectSession(storedUsername);
+                setupSocket(storedUsername);
+            } else {
+                $('#username-screen').show();
+                // If invited, show a friendly message
+                if (inviteCode) $('#username-screen h2').text(`Join Room ${inviteCode}? Enter Name:`);
             }
-            else { $('#username-screen').show(); }
+
+            // Login Button Handler
+            $('#submit-username').click(function (e) {
+                if (e) e.preventDefault();
+                let user = $('#username').val().trim();
+                if (user) {
+                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Connecting...');
+                    setupSocket(user);
+                } else {
+                    $('#username').addClass('invalid').focus();
+                }
+            });
+
+            $('#username').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#submit-username').click(); } });
+
+            // --- 3. SOCKET SETUP WITH AUTH ---
+            function setupSocket(user) {
+                // If we already have a live socket, don't reconnect
+                if (socket && socket.connected) return;
+
+                let token = getOrGenerateToken();
+
+                socket = io(
+                    serverURL,
+                    {
+                        withCredentials: true,
+                        transports: ['websocket', 'polling'], // Allow websockets now that we use token auth
+                        auth: {
+                            username: user,
+                            token: token
+                        }
+                    }
+                );
+
+                // --- CONNECTION SUCCESS ---
+                socket.on('connect', () => {
+                    console.log("Connected as " + user);
+                    sessionStorage.setItem('username', user);
+
+                    // --- INVITE LOGIC ---
+                    // If there is an invite code, JOIN IMMEDIATELY instead of showing menu
+                    if (inviteCode) {
+                        gameCode = inviteCode;
+                        // Clear the URL so refreshing doesn't loop forever or look messy
+                        window.history.replaceState({}, document.title, "/");
+
+                        socket.emit('join', { roomID: gameCode });
+                        // Switch to a loading screen momentarily
+                        showOverlay("Joining Room " + gameCode + "...");
+                    } else {
+                        switchScreen('game-selection-screen');
+                    }
+                });
+
+                socket.on('left_room_success', () => {
+                    gameCode = '';
+                    isHost = false;
+                    inviteCode = null; // Clear invite code so they don't auto-rejoin
+                    // Clear UI State
+                    $('#lobby-avatars').empty();
+                    $('#player-avatars').empty();
+                    // Go back to Menu
+                    switchScreen('game-selection-screen');
+                });
+
+                // --- CONNECTION ERROR (e.g. Username Taken) ---
+                socket.on('connect_error', (err) => {
+                    alert("Connection Failed: Username might be taken.");
+                    $('#submit-username').prop('disabled', false).html('ENTER <i class="fas fa-arrow-right"></i>');
+                    if ($('#game-selection-screen').is(':hidden')) switchScreen('username-screen');
+                    socket.disconnect();
+                });
+
+                // --- GAME HANDLERS ---
+                socket.on('error', (data) => {
+                    hideOverlay();
+                    alert(data.message);
+                    // If join failed, go back to menu
+                    switchScreen('game-selection-screen');
+                    $('#submit-game-key').prop('disabled', false).text('JOIN');
+                });
+                socket.on('game_code', (code) => {
+                    gameCode = code;
+                    $('#display-game-code').text(code);
+
+                    // GENERATE QR & LINK
+                    let joinLink = `${window.location.origin}/?code=${code}`;
+
+                    // Use a free public API for QR codes (simple & effective)
+                    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
+                    $('#room-qr-code').attr('src', qrUrl);
+                    $('#qr-container').fadeIn();
+
+                    switchScreen('create-game-screen');
+                });
+
+                socket.on('info_toast', (data) => {
+                    let t = $(`<div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#e74c3c; color:white; padding:10px 20px; border-radius:5px; z-index:9999;">${data.message}</div>`);
+                    $('body').append(t);
+                    setTimeout(() => t.fadeOut(() => t.remove()), 3000);
+                });
+
+                socket.on('player_joined', (players) => {
+                    hideOverlay(); 
+                    $('#lobby-avatars').empty(); 
+                    $('#player-avatars').empty();
+                    
+                    players.forEach(p => { 
+                        let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; 
+                        $('#lobby-avatars').append(html); 
+                        $('#player-avatars').append(html); 
+                    });
+                    
+                    // Handle Auto-Join Screen Switching
+                    if ($('#join-game-screen').is(':visible') || inviteCode) { 
+                        $('#display-game-code').text(gameCode);
+                        switchScreen('create-game-screen'); 
+                    }
+                    
+                    if (isHost) { 
+                        $('#start-game-button').show().prop('disabled', players.length < 2); 
+                        $('#waiting-msg').hide(); 
+                        
+                        // HOST: Ensure QR is visible
+                        let joinLink = `${window.location.origin}/?code=${gameCode}`;
+                        let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
+                        $('#room-qr-code').attr('src', qrUrl);
+                        $('#qr-container').show();
+                    } else { 
+                        // GUEST: Hide controls, show waiting message
+                        $('#start-game-button').hide(); 
+                        $('#waiting-msg').show(); 
+                        
+                        // FIX: Hide QR code for guests to keep UI clean
+                        $('#qr-container').hide();
+                    }
+                });
+
+                socket.on('player_left', (players) => {
+                    $('#lobby-avatars').empty(); $('#player-avatars').empty();
+                    players.forEach(p => { let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; $('#lobby-avatars').append(html); $('#player-avatars').append(html); });
+                    if (isHost) $('#start-game-button').prop('disabled', players.length < 2);
+                });
+
+                socket.on('game_started', (data) => {
+                    activeCategories = data.categories; gameAlphabet = data.allowed_letters;
+                    switchScreen('game-arena'); bgMusic.play().catch(e => console.log("Audio requires interaction"));
+                });
+
+                socket.on('private_player_turn', (data) => { showLetterSelection(data.disabledLetters); startTurnCountdown(10); });
+                socket.on('public_player_turn', (player) => { if (player !== sessionStorage.getItem('username')) { $('#letter-selection').hide(); waitTurnTimer(player); } });
+                socket.on('letter_chosen', (letter) => { clearInterval(turnTimerInterval); currentLetter = letter; $('#letter-selection').hide(); $('#turn-indicator').text(`Current Letter: ${letter}`); currentCatIndex = 0; activeInputs = {}; updateInputUI(); $('#dynamic-inputs-area').fadeIn(); startTimer(30); });
+                socket.on('force_submit', () => { if ($('#dynamic-inputs-area').is(':visible')) sendPlayerAnswers("Calculating results..."); else showOverlay("Calculating results..."); });
+
+                socket.on('start_voting', (contested) => {
+                    hideOverlay(); $('#game-arena').hide(); $('#voting-container').empty(); $('#submit-votes').prop('disabled', false).text('Submit Votes');
+                    contested.forEach((item, i) => {
+                        let isMine = item.player === sessionStorage.getItem('username');
+                        let html = `<div class="voting-card" data-id="${item.id}"><div class="vote-meta">${item.category} by ${item.player}</div><div class="vote-word">${item.word}</div>${isMine ? '<div class="my-word">Your Word</div>' : `<div class="vote-opts"><label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label><label><input type="radio" name="v_${i}" value="no"> ❌ No</label></div>`}<div class="vote-live-tally"><span class="tally-yes" id="yes-${item.id}">✅ 0</span><span class="tally-no" id="no-${item.id}">❌ 0</span></div></div>`;
+                        $('#voting-container').append(html);
+                    });
+                    switchScreen('voting-screen');
+                });
+                socket.on('vote_update', (items) => { items.forEach(item => { $(`#yes-${item.id}`).text(`✅ ${item.votes_yes}`); $(`#no-${item.id}`).text(`❌ ${item.votes_no}`); }); });
+
+                socket.on('round_result', (scores) => { hideOverlay(); $('#voting-screen').hide(); $('#game-arena').show(); $('#leaderboard-content').empty(); let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]); sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i + 1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); }); $('#leaderboard').fadeIn(); setTimeout(() => $('#leaderboard').fadeOut(), 5000); });
+            }
+
+            // --- UI HELPERS ---
 
             initAlphaGrid();
             function initAlphaGrid() {
@@ -312,6 +517,69 @@
                 });
             }
 
+            function waitTurnTimer(player) {
+                let t = 10;
+                $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
+                clearInterval(turnTimerInterval);
+                turnTimerInterval = setInterval(() => {
+                    t--;
+                    if (t > 0) $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
+                    else clearInterval(turnTimerInterval);
+                }, 1000);
+            }
+
+            function showToast(msg) {
+                let t = $(`<div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#34495e; color:white; padding:10px 20px; border-radius:30px; z-index:9999; box-shadow:0 5px 15px rgba(0,0,0,0.2); font-weight:bold;">${msg}</div>`);
+                $('body').append(t);
+                setTimeout(() => t.fadeOut(() => t.remove()), 3000);
+            }
+
+            function startTurnCountdown(seconds) {
+                clearInterval(turnTimerInterval);
+                $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
+                turnTimerInterval = setInterval(() => {
+                    seconds--;
+                    if (seconds >= 0) $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
+                    else clearInterval(turnTimerInterval);
+                }, 1000);
+            }
+
+            function leaveGame() {
+                if (confirm("Are you sure you want to leave this room?")) {
+                    socket.emit('leave_room', { room_id: gameCode });
+                }
+            }
+
+            $('#leave-lobby-btn, #exit-game-btn').click(function(e) {
+                e.preventDefault();
+                if (confirm("Are you sure you want to leave?")) {
+                    // Emit the event to the server
+                    if (socket && socket.connected) {
+                        socket.emit('leave_room', { room_id: gameCode });
+                    } else {
+                        // Fallback if connection is lost: Force leave locally
+                        switchScreen('game-selection-screen');
+                    }
+                }
+            });
+
+            $('#exit-game-btn').click((e) => {
+                e.preventDefault();
+                leaveGame();
+            });
+            $('#copy-link-btn').click(function () {
+                if (!gameCode) return;
+                const link = `${window.location.origin}/?code=${gameCode}`;
+
+                navigator.clipboard.writeText(link).then(() => {
+                    showToast("Link Copied to Clipboard!");
+                    $(this).css('color', '#27ae60'); // Turn green momentarily
+                    setTimeout(() => $(this).css('color', ''), 1000);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    prompt("Copy this link:", link); // Fallback
+                });
+            });
             $('#btn-goto-setup').click((e) => { e.preventDefault(); switchScreen('game-setup-screen'); });
             $('#show-add-cat-ui').click(function () { $(this).hide(); $('.custom-cat-input-group').css('display', 'flex'); $('#new-cat-name').focus(); });
             $('#add-cat-btn').click(function (e) {
@@ -354,13 +622,6 @@
                 socket.emit('create', { categories: selectedCats, allowed_letters: selectedAlpha });
             });
 
-            $('#username').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#submit-username').click(); } });
-            $('#submit-username').click(function (e) {
-                if (e) e.preventDefault();
-                let user = $('#username').val().trim();
-                if (user) { $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Checking...'); connectSession(user); }
-                else { $('#username').addClass('invalid').focus(); }
-            });
             $('#join-game-button').click((e) => { e.preventDefault(); switchScreen('join-game-screen'); });
             $('#submit-game-key').click(function (e) {
                 e.preventDefault(); gameCode = $('#game-key').val().trim();
@@ -401,104 +662,6 @@
                 else { bgMusic.muted = true; $('#sound-toggle i').attr('class', 'fas fa-volume-mute'); }
             });
 
-            function setupSocket() {
-                socket = io(
-                    serverURL,
-                    { 
-                        withCredentials: true,
-                        transports: ['websocket', 'polling'],
-                        auth: {
-                            username: sessionStorage.getItem('username')
-                        }
-                    }
-                );
-                socket.on('error', (data) => { alert(data.message); $('#submit-game-key').prop('disabled', false).text('JOIN'); });
-                socket.on('game_code', (code) => { gameCode = code; $('#display-game-code').text(code); switchScreen('create-game-screen'); });
-
-                socket.on('info_toast', (data) => {
-                    // Simple toast notification fallback
-                    let t = $(`<div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#e74c3c; color:white; padding:10px 20px; border-radius:5px; z-index:9999;">${data.message}</div>`);
-                    $('body').append(t);
-                    setTimeout(() => t.fadeOut(() => t.remove()), 3000);
-                });
-
-                socket.on('player_joined', (players) => {
-                    $('#lobby-avatars').empty(); $('#player-avatars').empty();
-                    players.forEach(p => { let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; $('#lobby-avatars').append(html); $('#player-avatars').append(html); });
-                    if ($('#join-game-screen').is(':visible')) { switchScreen('create-game-screen'); $('#display-game-code').text(gameCode); }
-                    if (isHost) { $('#start-game-button').show().prop('disabled', players.length < 2); $('#waiting-msg').hide(); }
-                    else { $('#start-game-button').hide(); $('#waiting-msg').show(); }
-                });
-                socket.on('player_left', (players) => {
-                    $('#lobby-avatars').empty(); $('#player-avatars').empty();
-                    players.forEach(p => { let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; $('#lobby-avatars').append(html); $('#player-avatars').append(html); });
-                    if (isHost) $('#start-game-button').prop('disabled', players.length < 2);
-                });
-                socket.on('game_started', (data) => {
-                    activeCategories = data.categories; gameAlphabet = data.allowed_letters;
-                    switchScreen('game-arena'); bgMusic.play().catch(e => console.log("Audio requires interaction"));
-                });
-
-                socket.on('private_player_turn', (data) => {
-                    showLetterSelection(data.disabledLetters);
-                    startTurnCountdown(10); // Start 10s visual timer
-                });
-
-                socket.on('public_player_turn', (player) => {
-                    if (player !== sessionStorage.getItem('username')) {
-                        $('#letter-selection').hide();
-                        // Visual timer for others too
-                        let t = 10;
-                        $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
-                        clearInterval(turnTimerInterval);
-                        turnTimerInterval = setInterval(() => {
-                            t--;
-                            if (t > 0) $('#turn-indicator').text(`Waiting for ${player} (${t}s)...`);
-                            else clearInterval(turnTimerInterval);
-                        }, 1000);
-                    }
-                });
-
-                socket.on('letter_chosen', (letter) => {
-                    clearInterval(turnTimerInterval); // Stop turn timer
-                    currentLetter = letter; $('#letter-selection').hide(); $('#turn-indicator').text(`Current Letter: ${letter}`);
-                    currentCatIndex = 0; activeInputs = {}; updateInputUI(); $('#dynamic-inputs-area').fadeIn(); startTimer(30);
-                });
-
-                socket.on('force_submit', () => {
-                    if ($('#dynamic-inputs-area').is(':visible')) {
-                        sendPlayerAnswers("Calculating results...");
-                    } else {
-                        showOverlay("Calculating results...");
-                    }
-                });
-
-                socket.on('start_voting', (contested) => {
-                    hideOverlay(); $('#game-arena').hide(); $('#voting-container').empty();
-                    $('#submit-votes').prop('disabled', false).text('Submit Votes');
-                    contested.forEach((item, i) => {
-                        let isMine = item.player === sessionStorage.getItem('username');
-                        let html = `<div class="voting-card" data-id="${item.id}"><div class="vote-meta">${item.category} by ${item.player}</div><div class="vote-word">${item.word}</div>${isMine ? '<div class="my-word">Your Word</div>' : `<div class="vote-opts"><label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label><label><input type="radio" name="v_${i}" value="no"> ❌ No</label></div>`}<div class="vote-live-tally"><span class="tally-yes" id="yes-${item.id}">✅ 0</span><span class="tally-no" id="no-${item.id}">❌ 0</span></div></div>`;
-                        $('#voting-container').append(html);
-                    });
-                    switchScreen('voting-screen');
-                });
-
-                socket.on('vote_update', (items) => {
-                    items.forEach(item => {
-                        $(`#yes-${item.id}`).text(`✅ ${item.votes_yes}`);
-                        $(`#no-${item.id}`).text(`❌ ${item.votes_no}`);
-                    });
-                });
-
-                socket.on('round_result', (scores) => {
-                    hideOverlay(); $('#voting-screen').hide(); $('#game-arena').show(); $('#leaderboard-content').empty();
-                    let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-                    sorted.forEach((entry, i) => { $('#leaderboard-content').append(`<div class="leaderboard-item"><div class="rank">#${i + 1}</div><div class="name">${entry[0]}</div><div class="score">${entry[1]} pts</div></div>`); });
-                    $('#leaderboard').fadeIn(); setTimeout(() => $('#leaderboard').fadeOut(), 5000);
-                });
-            }
-
             function showLetterSelection(disabledIndices) {
                 $('#letter-selection').empty().show();
                 gameAlphabet.split("").forEach((c) => {
@@ -510,7 +673,6 @@
                 });
             }
 
-            // Helper to start the 10s visual countdown for letter picking
             function startTurnCountdown(seconds) {
                 clearInterval(turnTimerInterval);
                 $('#turn-indicator').text(`🔥 Your Turn! Pick a Letter (${seconds}s) 🔥`);
@@ -550,13 +712,6 @@
             }
             function showOverlay(msg) { $('#results-overlay').fadeIn().find('p').text(msg); }
             function hideOverlay() { $('#results-overlay').fadeOut(); }
-            function connectSession(user) {
-                $.ajax({
-                    type: 'POST', url: `${serverURL}/session`, data: JSON.stringify({ session: user }), contentType: 'application/json', xhrFields: { withCredentials: true },
-                    success: () => { sessionStorage.setItem('username', user); switchScreen('game-selection-screen'); setupSocket(); },
-                    error: (xhr) => { $('#submit-username').prop('disabled', false).html('ENTER <i class="fas fa-arrow-right"></i>'); alert("Error: " + (xhr.responseJSON ? xhr.responseJSON.message : "Connection Failed")); }
-                });
-            }
         });
     </script>
 </body>

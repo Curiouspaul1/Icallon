@@ -20,7 +20,7 @@ from extensions import (
     session,
     ioclient
 )
-from utils import user_id_taken, clean_rooms
+from utils import clean_rooms
 
 load_dotenv()
 
@@ -41,7 +41,7 @@ app.config['SESSION_CACHELIB'] = FileSystemCache(
     threshold=500,
     cache_dir="sess"
 )
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
