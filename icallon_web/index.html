@@ -484,7 +484,12 @@
                 });
 
                 socket.on('private_player_turn', (data) => { showLetterSelection(data.disabledLetters); startTurnCountdown(10); });
-                socket.on('public_player_turn', (player) => { if (player !== sessionStorage.getItem('username')) { $('#letter-selection').hide(); waitTurnTimer(player); } });
+                socket.on('public_player_turn', (player) => {
+                    if (player !== localStorage.getItem('username')) {
+                        $('#letter-selection').hide();
+                        waitTurnTimer(player);
+                    }
+                });
                 socket.on('letter_chosen', (letter) => { clearInterval(turnTimerInterval); currentLetter = letter; $('#letter-selection').hide(); $('#turn-indicator').text(`Current Letter: ${letter}`); currentCatIndex = 0; activeInputs = {}; updateInputUI(); $('#dynamic-inputs-area').fadeIn(); startTimer(30); });
                 socket.on('force_submit', () => { if ($('#dynamic-inputs-area').is(':visible')) sendPlayerAnswers("Calculating results..."); else showOverlay("Calculating results..."); });
 
