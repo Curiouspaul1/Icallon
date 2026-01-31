@@ -295,7 +295,7 @@
     <script>
         $(document).ready(function () {
             let socket;
-            let storedUsername = sessionStorage.getItem('username');
+            let storedUsername = localStorage.getItem('username');
             let gameCode = '';
             let currentLetter;
             let isHost = false;
@@ -371,7 +371,7 @@
                 // --- CONNECTION SUCCESS ---
                 socket.on('connect', () => {
                     console.log("Connected as " + user);
-                    sessionStorage.setItem('username', user);
+                    localStorage.setItem('username', user);
 
                     // --- INVITE LOGIC ---
                     // If there is an invite code, JOIN IMMEDIATELY instead of showing menu
