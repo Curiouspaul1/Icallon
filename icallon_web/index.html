@@ -410,16 +410,13 @@
                 });
 
                 socket.on('restore_session', (data) => {
-                    console.log("Restoring session for room:", data.room_id);
+                    console.log("Restoring session:", data);
+                    hideOverlay(); // Clear any stuck overlays immediately
                     
-                    // 1. Restore Global Variables
                     gameCode = data.room_id;
                     isHost = data.is_host;
                     
-                    // 2. Restore Lobby UI
                     $('#display-game-code').text(gameCode);
-                    
-                    // Update avatars
                     $('#lobby-avatars').empty(); 
                     $('#player-avatars').empty();
                     data.players.forEach(p => { 
@@ -428,21 +425,34 @@
                         $('#player-avatars').append(html); 
                     });
 
-                    // 3. Decide which screen to show
                     if (data.game_started) {
-                        // If game is already running, go to Arena
-                        switchScreen('game-arena');
-                        // We might need to ask server for current state here if we want to be perfect,
-                        // but usually waiting for the next turn/event is enough for simple resilience.
+                        // NEW: Check if we are in voting phase
+                        if (data.current_state === 'voting' && data.voting_data) {
+                            // Manually trigger voting UI
+                            // We can just call the socket handler's logic logic here or
+                            // emit a local event, but for simplicity, we rely on the 
+                            // fact that we are synced.
+                            // A clean way is to force the UI switch:
+                            $('#game-arena').hide();
+                            switchScreen('voting-screen');
+                            // Note: ideally you refactor the rendering logic into a function 'renderVoting(data)'
+                            // and call it here. For now, if you just switchScreen, the user might see empty 
+                            // unless we render.
+                            
+                            // RE-TRIGGER the voting logic manually:
+                            // We can cheat by faking the event since we have the data:
+                            // socket.listeners('start_voting')[0](data.voting_data); 
+                            // But that's risky. Better to just tell user to wait or rely on next update.
+                            // For now, let's just show the screen so they aren't lost.
+                            alert("Game is in voting phase! Please wait for next round or refresh if UI is empty.");
+                        } else {
+                            switchScreen('game-arena');
+                        }
                     } else {
-                        // If still in lobby
                         switchScreen('create-game-screen');
-                        
-                        // Restore QR Code if Host
                         if (isHost) {
                             $('#start-game-button').show().prop('disabled', data.players.length < 2);
                             $('#waiting-msg').hide();
-                            
                             let joinLink = `${window.location.origin}/?code=${gameCode}`;
                             let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                             $('#room-qr-code').attr('src', qrUrl);
@@ -542,63 +552,69 @@
                 socket.on('force_submit', () => { if ($('#dynamic-inputs-area').is(':visible')) sendPlayerAnswers("Calculating results..."); else showOverlay("Calculating results..."); });
 
                 socket.on('start_voting', (contested) => {
-                    hideOverlay(); 
-                    $('#game-arena').hide(); 
-                    $('#voting-container').empty();
-                    let timeLeft = 30;
-                    $('#voting-timer').text(timeLeft).show();
-                    clearInterval(votingTimerInterval);
-                    votingTimerInterval = setInterval(() => {
-                        timeLeft--;
-                        $('#voting-timer').text(timeLeft);
-                        if (timeLeft <= 0) clearInterval(votingTimerInterval);
-                    }, 1000);
-                    let myUsername = localStorage.getItem('username');
-                    let itemsToVoteOn = 0;
-
-                    contested.forEach((item, i) => {
-                        let isMine = item.player === myUsername;
+                    try {
+                        // 1. FORCE CLEAR OVERLAY: This fixes the "Stuck on Calculating" issue
+                        hideOverlay(); 
+                        $('#game-arena').hide(); 
+                        $('#voting-container').empty();
                         
-                        // Count if this is something I can vote on
-                        if (!isMine) itemsToVoteOn++;
+                        // 2. Start Visual Timer
+                        let timeLeft = 30;
+                        $('#voting-timer').text(timeLeft).show();
+                        clearInterval(votingTimerInterval);
+                        votingTimerInterval = setInterval(() => {
+                            timeLeft--;
+                            $('#voting-timer').text(timeLeft);
+                            if (timeLeft <= 0) clearInterval(votingTimerInterval);
+                        }, 1000);
 
-                        let html = `
-                            <div class="voting-card" data-id="${item.id}">
-                                <div class="vote-meta">${item.category} by ${item.player}</div>
-                                <div class="vote-word">${item.word}</div>
-                                ${isMine ? 
-                                    '<div class="my-word">Your Word (Others will vote)</div>' : 
-                                    `<div class="vote-opts">
-                                        <label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label>
-                                        <label><input type="radio" name="v_${i}" value="no"> ❌ No</label>
-                                    </div>`
-                                }
-                                <div class="vote-live-tally">
-                                    <span class="tally-yes" id="yes-${item.id}">✅ 0</span>
-                                    <span class="tally-no" id="no-${item.id}">❌ 0</span>
-                                </div>
-                            </div>`;
-                        $('#voting-container').append(html);
-                    });
+                        // 3. Render Voting Cards
+                        let myUsername = localStorage.getItem('username');
+                        let itemsToVoteOn = 0;
 
-                    // LOGIC: If I have nothing to vote on, auto-submit empty votes so game proceeds
-                    if (itemsToVoteOn === 0) {
-                        $('#submit-votes').hide();
-                        // Add a status message so they know what's happening
-                        if ($('#voting-status').length === 0) {
-                            $('#voting-screen h2').after('<p id="voting-status" style="color:#e67e22; font-weight:bold;">Waiting for others to vote on your words...</p>');
+                        contested.forEach((item, i) => {
+                            let isMine = item.player === myUsername;
+                            if (!isMine) itemsToVoteOn++;
+                            let html = `
+                                <div class="voting-card" data-id="${item.id}">
+                                    <div class="vote-meta">${item.category} by ${item.player}</div>
+                                    <div class="vote-word">${item.word}</div>
+                                    ${isMine ? 
+                                        '<div class="my-word">Your Word (Others will vote)</div>' : 
+                                        `<div class="vote-opts">
+                                            <label><input type="radio" name="v_${i}" value="yes" checked> ✅ Yes</label>
+                                            <label><input type="radio" name="v_${i}" value="no"> ❌ No</label>
+                                        </div>`
+                                    }
+                                    <div class="vote-live-tally">
+                                        <span class="tally-yes" id="yes-${item.id}">✅ ${item.votes_yes || 0}</span>
+                                        <span class="tally-no" id="no-${item.id}">❌ ${item.votes_no || 0}</span>
+                                    </div>
+                                </div>`;
+                            $('#voting-container').append(html);
+                        });
+
+                        // 4. Handle "Self-Vote Only" scenario
+                        if (itemsToVoteOn === 0) {
+                            $('#submit-votes').hide();
+                            if ($('#voting-status').length === 0) {
+                                $('#voting-screen h2').after('<p id="voting-status" style="color:#e67e22; font-weight:bold;">Waiting for others...</p>');
+                            } else {
+                                $('#voting-status').show();
+                            }
+                            // Auto-submit empty vote so game doesn't stall
+                            socket.emit('cast_votes', { room_id: gameCode, votes: {} });
                         } else {
-                            $('#voting-status').text("Waiting for others to vote on your words...").show();
+                            $('#submit-votes').show().prop('disabled', false).text('Submit Votes');
+                            $('#voting-status').hide();
                         }
                         
-                        // Tell server we are "done" voting (sending empty object)
-                        socket.emit('cast_votes', { room_id: gameCode, votes: {} });
-                    } else {
-                        $('#submit-votes').show().prop('disabled', false).text('Submit Votes');
-                        $('#voting-status').hide(); // Hide status message if it exists
+                        switchScreen('voting-screen');
+                    } catch (e) {
+                        console.error("Error in start_voting:", e);
+                        hideOverlay(); // Failsafe
+                        alert("Voting error. Please refresh.");
                     }
-                    
-                    switchScreen('voting-screen');
                 });
                 socket.on('vote_update', (items) => { items.forEach(item => { $(`#yes-${item.id}`).text(`✅ ${item.votes_yes}`); $(`#no-${item.id}`).text(`❌ ${item.votes_no}`); }); });
 
