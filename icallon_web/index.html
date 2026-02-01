@@ -307,8 +307,8 @@
             let votingTimerInterval;
 
             // Your Cloud Run URL
-            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            // let serverURL = 'http://127.0.0.1:5000'
+            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            let serverURL = 'http://127.0.0.1:5000'
 
             let activeCategories = [];
             let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -407,6 +407,52 @@
                     $('#submit-username').prop('disabled', false).html('ENTER <i class="fas fa-arrow-right"></i>');
                     if ($('#game-selection-screen').is(':hidden')) switchScreen('username-screen');
                     socket.disconnect();
+                });
+
+                socket.on('restore_session', (data) => {
+                    console.log("Restoring session for room:", data.room_id);
+                    
+                    // 1. Restore Global Variables
+                    gameCode = data.room_id;
+                    isHost = data.is_host;
+                    
+                    // 2. Restore Lobby UI
+                    $('#display-game-code').text(gameCode);
+                    
+                    // Update avatars
+                    $('#lobby-avatars').empty(); 
+                    $('#player-avatars').empty();
+                    data.players.forEach(p => { 
+                        let html = `<div class="avatar"><img src="avatar.png"><span>${p}</span></div>`; 
+                        $('#lobby-avatars').append(html); 
+                        $('#player-avatars').append(html); 
+                    });
+
+                    // 3. Decide which screen to show
+                    if (data.game_started) {
+                        // If game is already running, go to Arena
+                        switchScreen('game-arena');
+                        // We might need to ask server for current state here if we want to be perfect,
+                        // but usually waiting for the next turn/event is enough for simple resilience.
+                    } else {
+                        // If still in lobby
+                        switchScreen('create-game-screen');
+                        
+                        // Restore QR Code if Host
+                        if (isHost) {
+                            $('#start-game-button').show().prop('disabled', data.players.length < 2);
+                            $('#waiting-msg').hide();
+                            
+                            let joinLink = `${window.location.origin}/?code=${gameCode}`;
+                            let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
+                            $('#room-qr-code').attr('src', qrUrl);
+                            $('#qr-container').show();
+                        } else {
+                            $('#start-game-button').hide();
+                            $('#waiting-msg').show();
+                            $('#qr-container').hide();
+                        }
+                    }
                 });
 
                 // --- GAME HANDLERS ---
