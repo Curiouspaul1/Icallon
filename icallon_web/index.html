@@ -251,7 +251,14 @@
                     <input type="text" id="current-input" placeholder="Type here..." autocomplete="off">
                 </div>
                 <div class="progress-dots" id="dynamic-dots"></div>
-                <button type="button" id="next-field" class="pure-button btn-next">NEXT</button>
+                
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                    <button type="button" id="prev-field" class="pure-button" style="background-color: #95a5a6; color: white; display: none;">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    
+                    <button type="button" id="next-field" class="pure-button btn-next">NEXT</button>
+                </div>
             </div>
         </div>
 
@@ -415,6 +422,9 @@
                     
                     gameCode = data.room_id;
                     isHost = data.is_host;
+
+                    activeCategories = data.categories || []; 
+                    gameAlphabet = data.allowed_letters || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                     
                     $('#display-game-code').text(gameCode);
                     $('#lobby-avatars').empty(); 
@@ -717,6 +727,8 @@
                 $('#new-cat-name').val(''); $('.custom-cat-input-group').hide(); $('#show-add-cat-ui').show();
             });
 
+            
+
             function renderCustomTags() {
                 $('#custom-cat-list').empty();
                 customCategories.forEach((cat, idx) => {
@@ -764,6 +776,17 @@
                 activeInputs[catName] = $('#current-input').val();
                 if (currentCatIndex < activeCategories.length - 1) { currentCatIndex++; updateInputUI(); }
                 else { sendPlayerAnswers(); }
+            });
+            $('#prev-field').click(function (e) {
+                e.preventDefault();
+                // Save current input before moving back
+                let catName = activeCategories[currentCatIndex];
+                activeInputs[catName] = $('#current-input').val();
+
+                if (currentCatIndex > 0) {
+                    currentCatIndex--;
+                    updateInputUI();
+                }
             });
             $('#current-input').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#next-field').click(); } });
             $('#submit-votes').click(function (e) {
@@ -828,6 +851,11 @@
                 $('#dynamic-dots').empty();
                 activeCategories.forEach((_, i) => { let d = $('<span class="dot"></span>'); if (i === currentCatIndex) d.addClass('active'); $('#dynamic-dots').append(d); });
                 $('#next-field').text(currentCatIndex === activeCategories.length - 1 ? "FINISH!" : "NEXT");
+                if (currentCatIndex === 0) {
+                    $('#prev-field').hide();
+                } else {
+                    $('#prev-field').show();
+                }
             }
 
             function sendPlayerAnswers(customMsg) {
