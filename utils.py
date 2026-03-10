@@ -26,6 +26,17 @@ except LookupError:
 
 geolocator = Nominatim(user_agent="Icallon")
 lock = ReadWriteLock()
+animal_set = set()
+try:
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_path, "animals_names.txt")
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as fp:
+            # Read, split by comma, strip whitespace, lowercase, and add to a SET for O(1) instant lookup
+            animal_set = {animal.strip().lower() for animal in fp.read().split(",") if animal.strip()}
+    print(f"✅ Loaded {len(animal_set)} animals into memory.")
+except Exception as e:
+    print(f"❌ Error loading animals dataset: {e}")
 
 
 @dataclass
@@ -327,14 +338,8 @@ def is_valid_word(word):
 
 
 def is_animal(word):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(base_path, "animals_names.txt")
-        with open(file_path, "r") as fp:
-            return word.lower() in fp.read().lower()
-    except Exception as e:
-        print(f"Error checking animal: {e}")
-        return False
+    # Instant O(1) lookup against the pre-loaded set
+    return word.lower().strip() in animal_set
 
 
 def is_place(name):
@@ -396,3 +401,6 @@ def commit_round_scores(rooms, room_id, final_scores):
         room["round_answers"] = {}
         room["last_interaction"] = time.time()
         return Resp(file_json=rooms, routine_resp=room["player_to_score"])
+
+
+print(is_animal('hand'))
