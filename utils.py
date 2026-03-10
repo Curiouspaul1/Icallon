@@ -1,13 +1,9 @@
 import os
 import time
 import json
-import nltk
-import string
 import random
-from typing import List, Optional
-from functools import wraps
+from typing import Optional
 from dataclasses import dataclass
-from collections import defaultdict
 
 from geopy import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
@@ -20,9 +16,12 @@ from read_writer import ReadWriteLock
 nd = NameDataset()
 try:
     word_list = set(words.words())
+    print(f"✅ Loaded {len(word_list)} English words.")
 except LookupError:
-    nltk.download("words")
-    word_list = set(words.words())
+    print(
+        "❌ NLTK words not found! Ensure 'RUN python -m nltk.downloader words' is in Dockerfile."
+    )
+    word_list = set()
 
 geolocator = Nominatim(user_agent="Icallon")
 lock = ReadWriteLock()
@@ -33,7 +32,11 @@ try:
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as fp:
             # Read, split by comma, strip whitespace, lowercase, and add to a SET for O(1) instant lookup
-            animal_set = {animal.strip().lower() for animal in fp.read().split(",") if animal.strip()}
+            animal_set = {
+                animal.strip().lower()
+                for animal in fp.read().split(",")
+                if animal.strip()
+            }
     print(f"✅ Loaded {len(animal_set)} animals into memory.")
 except Exception as e:
     print(f"❌ Error loading animals dataset: {e}")
@@ -403,4 +406,4 @@ def commit_round_scores(rooms, room_id, final_scores):
         return Resp(file_json=rooms, routine_resp=room["player_to_score"])
 
 
-print(is_animal('hand'))
+print(is_animal("hand"))
