@@ -32,6 +32,13 @@
             },
         }
     </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SBH08LL5LT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-SBH08LL5LT');
+    </script>
 
     <!-- <link rel="stylesheet" href="main.css"> -->
     <style>
@@ -325,6 +332,7 @@
                     <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
                     <span class="material-symbols-outlined text-white">rocket_launch</span>
                 </div>
+                gtag('event', 'create_room', { 'mode': 'quick_match', 'rounds': numRounds });
             </button>
         </div>
     </div>
@@ -706,6 +714,9 @@
             $('#join-public-btn').click(function (e) {
                 e.preventDefault();
                 showOverlay("Finding a public room...");
+                if (typeof gtag === 'function') {
+                    gtag('event', 'join_public');
+                }
                 socket.emit('join_public');
             });
 
@@ -780,6 +791,9 @@
                 let finalLetters = alphabet.slice(0, numRounds).join('');
                 
                 showOverlay("Creating room...");
+                if (typeof gtag === 'function') {
+                    gtag('event', 'create_room', { 'mode': 'quick_match', 'rounds': numRounds });
+                }
                 socket.emit('create', { categories: finalCategories, allowed_letters: finalLetters });
             });
 
@@ -869,6 +883,12 @@
                 }
                 
                 showOverlay("Creating room...");
+                if (typeof gtag === 'function') {
+                    gtag('event', 'create_room', { 
+                        'mode': 'standard', 
+                        'categories': finalCategories ? finalCategories.length : 4 
+                    });
+                }
                 socket.emit('create', { categories: finalCategories, allowed_letters: finalLetters });
             });
             // ----------------------------------------
