@@ -92,7 +92,7 @@ def getFile(filename: str) -> dict:
             return {}
         with open(filename, "r") as fp:
             return json.load(fp)
-    except:
+    except Exception:
         return {}
     finally:
         lock.release_read()
@@ -158,7 +158,9 @@ def addToRoom(rooms: dict, room_id: str, player: str) -> None:
 
 
 @execute_action(filename="rooms.json")
-def indexRoom(rooms, room_id, categories=None, allowed_letters=None):
+def indexRoom(
+    rooms, room_id, categories=None, allowed_letters=None, is_public=False
+):  # <--- ADD is_public=False
     if not categories:
         categories = ["Name", "Animal", "Place", "Thing"]
     if not allowed_letters:
@@ -177,9 +179,23 @@ def indexRoom(rooms, room_id, categories=None, allowed_letters=None):
         "round_answers": {},
         "player_to_score": {},
         "game_started": False,
+        "is_public": is_public,  # <--- NEW: Track if it's a public room
         "last_interaction": time.time(),
     }
     return Resp(file_json=rooms)
+
+
+# --- NEW FUNCTION ---
+@execute_action(filename="rooms.json")
+def find_available_public_room(rooms, max_players=8):
+    """Finds a public room that hasn't started and isn't full."""
+    for room_id, room_data in rooms.items():
+        if room_data.get("is_public", False) and not room_data.get(
+            "game_started", False
+        ):
+            if len(room_data.get("players", [])) < max_players:
+                return Resp(routine_resp=room_id)
+    return Resp(routine_resp=None)
 
 
 @execute_action(filename="rooms.json")

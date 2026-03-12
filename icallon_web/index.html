@@ -157,6 +157,16 @@
                 </div>
             </button>
 
+            <button onclick="switchScreen('quick-match-screen')" class="w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group shadow-md">
+                <div class="text-left">
+                    <h3 class="font-black text-xl text-primary mb-1">QUICK MATCH</h3>
+                    <p class="text-slate-400 text-sm font-medium">Classic game, set rounds</p>
+                </div>
+                <div class="size-10 rounded-full bg-slate-700/50 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all text-slate-300">
+                    <span class="material-symbols-outlined">bolt</span>
+                </div>
+            </button>
+
             <button id="join-public-btn" type="button"
                 class="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-primary/50 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group">
                 <div class="text-left">
@@ -179,6 +189,9 @@
                     class="size-10 rounded-full border border-slate-700 flex items-center justify-center group-hover:bg-slate-800 transition-all text-slate-400">
                     <span class="material-symbols-outlined">key</span>
                 </div>
+            </button>
+            <button type="button" onclick="$('#how-to-play-modal').fadeIn().css('display', 'flex')" class="mt-4 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest mx-auto">
+                <span class="material-symbols-outlined align-middle text-lg mr-1">help</span> How to Play
             </button>
         </main>
     </div>
@@ -213,6 +226,19 @@
                         </div>
                         <input class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary" name="cat_type" type="radio" value="custom"/>
                     </label>
+                    
+                    <div id="custom-cat-panel" style="display: none;" class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4 shadow-inner">
+                        <div class="flex flex-wrap gap-2" id="cat-chips">
+                            </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="new-cat-input" maxlength="15" placeholder="Add custom (e.g. Movie)..." autocomplete="off" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary placeholder-slate-500">
+                            <button type="button" id="add-cat-btn" class="bg-primary hover:bg-orange-600 px-4 py-2 rounded-lg font-black text-white transition-all active:scale-95">+</button>
+                        </div>
+                        <div class="flex justify-between items-center text-xs font-bold">
+                            <span id="cat-error-msg" class="text-red-400 hidden">Max 6 allowed!</span>
+                            <span class="text-slate-400 ml-auto" id="cat-count-text">4/6 Categories</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -232,16 +258,69 @@
                     <label class="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-slate-800/50 cursor-pointer hover:border-primary/20 transition-all">
                         <div class="flex flex-col">
                             <span class="text-slate-100 font-bold">Custom Selection</span>
-                            <span class="text-xs text-slate-400">Exclude difficult letters</span>
+                            <span class="text-xs text-slate-400">Pick exactly which letters to play</span>
                         </div>
                         <input class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary" name="let_type" type="radio" value="custom"/>
                     </label>
+
+                    <div id="custom-let-panel" style="display: none;" class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-3 shadow-inner">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tap to include</span>
+                            <button type="button" id="toggle-all-letters" class="text-xs text-primary font-bold hover:text-white transition-colors">Select All</button>
+                        </div>
+                        <div class="grid grid-cols-6 sm:grid-cols-7 gap-2" id="letter-grid-selector">
+                            </div>
+                        <p class="text-xs font-bold text-red-400 hidden" id="let-error-msg">Select at least 3 letters!</p>
+                    </div>
                 </div>
             </div>
         </main>
 
         <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none">
             <button type="button" id="confirm-create-game-btn" class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
+                <div class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
+                    <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
+                    <span class="material-symbols-outlined text-white">rocket_launch</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <div id="quick-match-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
+        <header class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
+            <button type="button" onclick="switchScreen('game-selection-screen')" class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 class="font-bold text-lg tracking-wide uppercase">Quick Match</h1>
+            <div class="size-10"></div> 
+        </header>
+
+        <main class="flex-1 overflow-y-auto px-6 py-12 max-w-md w-full mx-auto flex flex-col justify-center space-y-8 pb-32">
+            <div class="text-center space-y-2">
+                <div class="inline-flex items-center justify-center size-20 rounded-full bg-primary/20 text-primary mb-4 border border-primary/30 shadow-[0_0_30px_rgba(236,91,19,0.3)]">
+                    <span class="material-symbols-outlined text-4xl">bolt</span>
+                </div>
+                <h2 class="text-3xl font-black text-white">How many rounds?</h2>
+                <p class="text-slate-400 font-medium text-sm">Classic categories. Random letters.</p>
+            </div>
+            
+            <div class="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-8 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+                <div class="flex justify-between items-end">
+                    <span class="text-slate-400 font-bold uppercase tracking-wider text-sm">Total Rounds</span>
+                    <span id="quick-rounds-display" class="text-5xl font-black text-primary drop-shadow-md">10</span>
+                </div>
+                <div>
+                    <input type="range" id="quick-rounds-slider" min="3" max="26" value="10" class="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-primary border border-slate-600">
+                    <div class="flex justify-between text-xs font-bold text-slate-500 mt-3">
+                        <span>3 (Quick)</span>
+                        <span>26 (Marathon)</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
+            <button type="button" id="confirm-quick-match-btn" class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
                 <div class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
                     <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
                     <span class="material-symbols-outlined text-white">rocket_launch</span>
@@ -327,13 +406,15 @@
 
     <div id="game-arena" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
         <button type="button" class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg" title="Leave Match">
-            <span class="material-symbols-outlined">logout</span>
+            <span class="material-symbols-outlined rotate-180">logout</span>
         </button>
-        <div id="gameplay-top-bar" class="w-full flex justify-between items-center p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800" style="display: none;">
-            <div id="turn-indicator" class="bg-slate-800/80 px-4 py-2 rounded-full text-primary font-bold text-sm border border-slate-700">Playing...</div>
-            <button id="exit-game-btn" class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300" title="Leave Game">
-                <span class="material-symbols-outlined">logout</span>
-            </button>
+
+        <button type="button" id="volume-toggle-btn" class="absolute top-6 right-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-primary/50 text-slate-300 backdrop-blur-md shadow-lg" title="Toggle Sound">
+            <span class="material-symbols-outlined" id="volume-icon">volume_up</span>
+        </button>
+
+        <div id="gameplay-top-bar" class="w-full flex justify-center items-center p-6 bg-transparent sticky top-0 z-20 pointer-events-none" style="display: none;">
+            <div id="turn-indicator" class="bg-slate-800/90 px-6 py-2 rounded-full text-white font-bold text-sm border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md pointer-events-auto">Playing...</div>
         </div>
 
         <main class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8 flex flex-col justify-center">
@@ -481,11 +562,30 @@
         </main>
     </div>
 
+    <div id="how-to-play-modal" style="display: none;" class="fixed inset-0 z-[999] bg-background-dark/90 backdrop-blur-sm items-center justify-center p-6">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
+            <button onclick="$('#how-to-play-modal').fadeOut()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900 rounded-full p-1"><span class="material-symbols-outlined">close</span></button>
+            <h2 class="text-2xl font-black text-white mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">menu_book</span> Rules
+            </h2>
+            <ul class="space-y-4 text-sm text-slate-300 font-medium">
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">1</span> <div><strong class="text-white block">The Letter:</strong> Every round, a player picks a letter from the board (or one is randomly chosen in Quick Match).</div></li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">2</span> <div><strong class="text-white block">The Guessing:</strong> Race against the clock to type words that start with that exact letter for every category.</div></li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">3</span> <div><strong class="text-white block">The Voting:</strong> Custom categories or unrecognized words go to a vote. The majority rules!</div></li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">4</span> <div><strong class="text-white block">Scoring:</strong> Valid words get 10 points. The highest score at the end of the rounds wins the game.</div></li>
+            </ul>
+        </div>
+    </div>
+
     <div id="results-overlay"
         style="display: none; position: fixed; inset: 0; background: rgba(34, 22, 16, 0.9); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
         <i class="fas fa-circle-notch fa-spin text-5xl text-primary mb-4"></i>
         <p class="text-2xl font-bold text-white">Calculating...</p>
     </div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="sounds/theme1.mp3" type="audio/mpeg">
+    </audio>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
@@ -498,6 +598,7 @@
             let gameCode = '';
             let currentLetter;
             let isHost = false;
+            let isJoiningViaLink = false;
             let roundTimer;
             let turnTimerInterval;
             let guessingTimerInterval;
@@ -540,6 +641,15 @@
             //         $('#lobby-avatars').append(html); 
             //     });
             // }
+            let isMuted = false;
+            $('#volume-toggle-btn').click(function(e) {
+                e.preventDefault();
+                isMuted = !isMuted;
+                $('#volume-icon').text(isMuted ? 'volume_off' : 'volume_up');
+                
+                // This targets any <audio> tags you bring over from your original app
+                $('audio').prop('muted', isMuted);
+            });
             function renderLobbyAvatars(players) {
                 $('#lobby-avatars').empty();
                 let myUsername = localStorage.getItem('username');
@@ -599,26 +709,169 @@
                 socket.emit('join_public');
             });
 
-            $('input[type=radio]').change(function() {
-                // Reset styling on siblings
-                $(this).closest('.space-y-3').find('label').removeClass('border-primary bg-primary/5').addClass('border-transparent bg-slate-800/50');
-                // Apply styling to selected
-                $(this).closest('label').removeClass('border-transparent bg-slate-800/50').addClass('border-primary bg-primary/5');
+            // --- CUSTOM GAME CREATION LOGIC ---
+            
+            let customCategories = ["Name", "Animal", "Place", "Thing"];
+            let customLetters = new Set(); // Stores letters like 'A', 'B'
+
+            // Render category chips
+            function renderCategoryChips() {
+                $('#cat-chips').empty();
+                customCategories.forEach((cat, index) => {
+                    // Core categories get a slightly different visual style to distinguish them
+                    let isCore = ["Name", "Animal", "Place", "Thing"].includes(cat);
+                    let chip = $(`
+                        <div class="flex items-center gap-1 px-3 py-1.5 rounded-full ${isCore ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-slate-700 border-slate-600 text-white'} border text-sm font-bold">
+                            ${cat}
+                            <button type="button" class="ml-1 hover:text-red-400 transition-colors" data-idx="${index}">
+                                <span class="material-symbols-outlined text-[14px]">close</span>
+                            </button>
+                        </div>
+                    `);
+                    chip.find('button').click(function() {
+                        customCategories.splice($(this).data('idx'), 1);
+                        renderCategoryChips();
+                    });
+                    $('#cat-chips').append(chip);
+                });
+                $('#cat-count-text').text(`${customCategories.length}/6 Categories`);
+                $('#cat-error-msg').hide();
+            }
+
+            // Add custom category
+            $('#add-cat-btn').click(function() {
+                let val = $('#new-cat-input').val().trim();
+                if (!val) return;
+                
+                // Capitalize first letter for neatness
+                val = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+                
+                if (customCategories.length >= 6) {
+                    $('#cat-error-msg').text("Max 6 allowed!").show();
+                    return;
+                }
+                if (customCategories.includes(val)) {
+                    $('#cat-error-msg').text("Already added!").show();
+                    return;
+                }
+                
+                customCategories.push(val);
+                $('#new-cat-input').val('');
+                renderCategoryChips();
             });
 
-            // Action to create the game
-            $('#confirm-create-game-btn').click(function(e) {
+            $('#quick-rounds-slider').on('input', function() {
+                $('#quick-rounds-display').text($(this).val());
+            });
+
+            // Handle the submission
+            $('#confirm-quick-match-btn').off('click').on('click', function(e) {
                 e.preventDefault();
                 
-                // For now, we will pass null to use the server's defaults 
-                // (Name, Animal, Place, Thing) and (A-Z).
-                // We can wire up the custom input fields later!
-                let categories = null; 
-                let allowed_letters = null;
+                let numRounds = parseInt($('#quick-rounds-slider').val());
+                let finalCategories = ["Name", "Animal", "Place", "Thing"]; // Lock to classic
+                
+                // Shuffle the alphabet and pick N random letters
+                let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+                for (let i = alphabet.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]];
+                }
+                let finalLetters = alphabet.slice(0, numRounds).join('');
                 
                 showOverlay("Creating room...");
-                socket.emit('create', { categories: categories, allowed_letters: allowed_letters });
+                socket.emit('create', { categories: finalCategories, allowed_letters: finalLetters });
             });
+
+            // Allow hitting "Enter" in the custom category input
+            $('#new-cat-input').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#add-cat-btn').click(); } });
+
+            // Render Letter Grid
+            function renderLetterGrid() {
+                $('#letter-grid-selector').empty();
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').forEach(letter => {
+                    let isSelected = customLetters.has(letter);
+                    let btn = $(`
+                        <button type="button" class="aspect-square rounded-lg font-black text-lg transition-all border-2 
+                            ${isSelected ? 'bg-primary border-primary text-white shadow-md' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-primary/50'}">
+                            ${letter}
+                        </button>
+                    `);
+                    btn.click(function() {
+                        if (customLetters.has(letter)) customLetters.delete(letter);
+                        else customLetters.add(letter);
+                        renderLetterGrid();
+                    });
+                    $('#letter-grid-selector').append(btn);
+                });
+            }
+
+            // Quick Select / Deselect All
+            $('#toggle-all-letters').click(function() {
+                if (customLetters.size === 26) {
+                    customLetters.clear();
+                    $(this).text("Select All");
+                } else {
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('').forEach(l => customLetters.add(l));
+                    $(this).text("Clear All");
+                }
+                renderLetterGrid();
+            });
+
+            // Initialize UIs
+            renderCategoryChips();
+            renderLetterGrid();
+
+            // Toggle panels when radio buttons change
+            $('input[type=radio]').change(function() {
+                // Style updates
+                $(this).closest('.space-y-3').find('label').removeClass('border-primary bg-primary/5').addClass('border-transparent bg-slate-800/50');
+                $(this).closest('label').removeClass('border-transparent bg-slate-800/50').addClass('border-primary bg-primary/5');
+                
+                // Show/Hide Panels
+                if ($(this).attr('name') === 'cat_type') {
+                    if ($(this).val() === 'custom') $('#custom-cat-panel').slideDown(200);
+                    else $('#custom-cat-panel').slideUp(200);
+                }
+                if ($(this).attr('name') === 'let_type') {
+                    if ($(this).val() === 'custom') $('#custom-let-panel').slideDown(200);
+                    else $('#custom-let-panel').slideUp(200);
+                }
+            });
+
+            // --- CREATE GAME SUBMISSION ---
+            $('#confirm-create-game-btn').off('click').on('click', function(e) {
+                e.preventDefault();
+                
+                let isCustomCat = $('input[name="cat_type"]:checked').val() === 'custom';
+                let isCustomLet = $('input[name="let_type"]:checked').val() === 'custom';
+                
+                let finalCategories = null; // Backend defaults if null
+                let finalLetters = null;    // Backend defaults if null
+                
+                // Validation for custom selections
+                if (isCustomCat) {
+                    if (customCategories.length === 0) {
+                        $('#cat-error-msg').text("Add at least 1 category!").show();
+                        return;
+                    }
+                    finalCategories = [...customCategories];
+                }
+                
+                if (isCustomLet) {
+                    if (customLetters.size < 3) {
+                        $('#let-error-msg').show();
+                        return;
+                    }
+                    $('#let-error-msg').hide();
+                    // Convert Set to string (e.g., "ABCEFG")
+                    finalLetters = Array.from(customLetters).join(''); 
+                }
+                
+                showOverlay("Creating room...");
+                socket.emit('create', { categories: finalCategories, allowed_letters: finalLetters });
+            });
+            // ----------------------------------------
 
             function setupSocket(user) {
                 if (socket && socket.connected) return;
@@ -635,9 +888,11 @@
                 );
 
                 socket.on('connect', () => {
+                    console.log("📡 Connected to server! SID:", socket.id);
                     localStorage.setItem('username', user);
                     
                     if (inviteCode) {
+                        isJoiningViaLink = true;
                         gameCode = inviteCode;
                         window.history.replaceState({}, document.title, "/"); 
                         socket.emit('join', { roomID: gameCode });
@@ -647,6 +902,8 @@
                 });
 
                 socket.on('show_home_screen', () => {
+                    console.log("🏠 Received show_home_screen");
+                    if (isJoiningViaLink) return;
                     hideOverlay();
                     switchScreen('game-selection-screen');
                 });
@@ -713,12 +970,17 @@
 
                     // 2. Update UI Avatars
                     renderLobbyAvatars(players);
+                    
+                    // unfreeze game if need be
+                    if (players.length >= 2 && $('#results-overlay p').text().includes("Player disconnected")) {
+                        hideOverlay();
+                    }
 
                     // 3. YOUR ORIGINAL LOGIC: Handle switching from Join screen to Lobby
-                    if ($('#join-game-screen').is(':visible') || inviteCode) {
+                    if ($('#join-game-screen').is(':visible') || isJoiningViaLink) { // <--- USE FLAG HERE
                         $('#display-game-code').text(gameCode);
                         switchScreen('create-game-screen');
-                        inviteCode = null; // Clear invite code after use
+                        isJoiningViaLink = false; // <--- RESET FLAG ONCE SUCCESSFUL
                     }
 
                     // 4. YOUR ORIGINAL LOGIC: Handle Host UI elements
@@ -752,17 +1014,33 @@
                     if (isHost) {
                         $('#start-game-button').prop('disabled', players.length < 2);
                     }
+
+                    if (players.length < 2 && $('#game-arena').is(':visible')) {
+                        showOverlay("Player disconnected. Waiting for someone to join...");
+                    }
                 });
 
                 socket.on('left_room_success', () => {
                     gameCode = ''; isHost = false; inviteCode = null;
                     $('#lobby-avatars').empty(); $('#qr-container').hide();
                     switchScreen('game-selection-screen');
+
+                    let bgMusic = document.getElementById('backgroundMusic');
+                    if (bgMusic) {
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0; // Rewind to start
+                    }
                 });
 
                 socket.on('game_started', (data) => {
                     activeCategories = data.categories; gameAlphabet = data.allowed_letters;
                     switchScreen('game-arena');
+
+                    let bgMusic = document.getElementById('backgroundMusic');
+                    if (bgMusic) {
+                        // Browsers require error handling for auto-play policies
+                        bgMusic.play().catch(e => console.log("Auto-play blocked by browser:", e));
+                    }
                 });
 
                 socket.on('private_player_turn', (data) => { 
@@ -779,27 +1057,9 @@
                     } 
                 });
 
-                socket.on('letter_chosen', (letter) => { 
-                    clearInterval(turnTimerInterval); 
-                    currentLetter = letter; 
-                    
-                    $('#letter-selection').hide(); 
-                    $('#waiting-turn-screen').hide();
-                    
-                    $('#gameplay-top-bar').fadeIn();
-                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>`); 
-                    
-                    // NEW: Update Guessing UI Header
-                    $('#guessing-letter-display').text(`Letter: ${letter}`);
-                    
-                    currentCatIndex = 0; 
-                    activeInputs = {}; 
-                    updateInputUI(); 
-                    $('#dynamic-inputs-area').fadeIn(); 
-                    
-                    // NEW: Start 30s Guessing Timer
-                    let totalTime = 30; // Matches server's 35s max tolerance
-                    let t = totalTime;
+                function startGuessingTimer(secondsLeft) {
+                    let totalTime = 30; 
+                    let t = secondsLeft;
                     clearInterval(guessingTimerInterval);
                     
                     function updateGuessTimerUI(sec) {
@@ -828,6 +1088,27 @@
                             sendPlayerAnswers("Time's up! Submitting...");
                         }
                     }, 1000);
+                }
+
+                socket.on('letter_chosen', (letter) => { 
+                    clearInterval(turnTimerInterval); 
+                    currentLetter = letter; 
+                    
+                    $('#letter-selection').hide(); 
+                    $('#waiting-turn-screen').hide();
+                    
+                    $('#gameplay-top-bar').fadeIn();
+                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>`); 
+                    
+                    $('#guessing-letter-display').text(`Letter: ${letter}`);
+                    
+                    currentCatIndex = 0; 
+                    activeInputs = {}; 
+                    updateInputUI(); 
+                    $('#dynamic-inputs-area').fadeIn(); 
+                    
+                    // Call our new extracted function
+                    startGuessingTimer(30); 
                 });
 
                 socket.on('force_submit', () => {
@@ -926,12 +1207,15 @@
                     }
 
                     if (data.game_started) {
-                        // 1. Rebuild UI if they reconnect during Voting
-                        if (data.current_state === 'voting' && data.voting_data) {
-                            renderVotingScreen(data.voting_data);
-                        } 
-                        // 2. Rebuild UI if they reconnect during Typing/Answering
-                        else if (data.current_state === 'answering' && data.current_letter) {
+                        let state = data.current_state;
+                        // Safely grab the time left from the backend, default to max times if missing
+                        let timeLeft = data.time_left !== undefined ? data.time_left : null;
+                        let totalDuration = data.total_duration !== undefined ? data.total_duration : 35;
+
+                        if (state === 'voting') {
+                            if (data.voting_data) renderVotingScreen(data.voting_data, timeLeft !== null ? timeLeft : 30);
+
+                        } else if (state === 'answering') {
                             switchScreen('game-arena');
                             currentLetter = data.current_letter;
                             
@@ -940,20 +1224,53 @@
                             
                             $('#gameplay-top-bar').fadeIn();
                             $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${currentLetter}</span>`); 
+                            $('#guessing-letter-display').text(`Letter: ${currentLetter}`);
                             
                             currentCatIndex = 0; 
                             activeInputs = {}; 
                             updateInputUI(); 
                             $('#dynamic-inputs-area').fadeIn(); 
-                        }
-                        // 3. Rebuild UI if they reconnect while waiting for a letter pick
-                        else {
+
+                            // Start the timer with the exact remaining time
+                            let elapsed = totalDuration - timeLeft;
+                            let visibleTimeLeft = Math.max(0, 30 - elapsed);
+                            startGuessingTimer(visibleTimeLeft);
+
+                        } else if (state === 'picking') {
                             switchScreen('game-arena');
+                            let pickTime = timeLeft !== null ? timeLeft : 10;
+                            
                             if (data.turn_player === localStorage.getItem('username')) {
                                 showLetterSelection(data.used_letters || []);
-                                startTurnCountdown(10);
+                                startTurnCountdown(pickTime, 10); 
                             } else {
-                                waitTurnTimer(data.turn_player);
+                                waitTurnTimer(data.turn_player, pickTime);
+                            }
+                        } else if (state === 'leaderboard') {
+                            // Trigger your existing leaderboard display logic
+                            // data.scores contains the scores we just passed from the backend
+                            
+                            // Note: Since your socket.on('round_result') already handles sorting 
+                            // and displaying, you can just manually trigger that same logic:
+                            
+                            let mockScores = data.scores || {};
+                            // Your existing logic uses a 10s timer, we sync it to the real remaining time
+                            let remaining = data.time_left !== undefined ? data.time_left : 10; 
+                            
+                            // To avoid rewriting your UI code, just emit a local event or extract 
+                            // your leaderboard UI building code into a function and call it here.
+                            
+                            console.log("Restoring to leaderboard with time:", remaining);
+                        } else {
+                            // STATE 3: Default/Fallback
+                            switchScreen('game-arena');
+                            let pickTime = timeLeft !== null ? timeLeft : 10;
+                            
+                            if (data.turn_player === localStorage.getItem('username')) {
+                                showLetterSelection(data.used_letters || []);
+                                startTurnCountdown(pickTime, 10); 
+                            } else {
+                                waitTurnTimer(data.turn_player, pickTime);
                             }
                         }
                     } else {
@@ -1064,7 +1381,7 @@
                 socket.emit('cast_votes', { room_id: gameCode, votes: votes });
             });
 
-            function waitTurnTimer(player) {
+            function waitTurnTimer(player, secondsLeft = 10) {
                 $('#gameplay-top-bar').hide();
                 $('#letter-selection').hide();
                 $('#dynamic-inputs-area').hide();
@@ -1074,13 +1391,14 @@
                 let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
                 $('#waiting-avatar-img').attr('src', avatarUrl);
                 
-                let t = 10;
+                // Use the passed-in time instead of hardcoding 10!
+                let t = secondsLeft; 
                 $('#waiting-timer-text').text(`${t}s`);
                 
                 clearInterval(turnTimerInterval);
                 turnTimerInterval = setInterval(() => {
                     t--;
-                    if (t > 0) {
+                    if (t >= 0) { // Keep updating until it hits 0
                         $('#waiting-timer-text').text(`${t}s`);
                     } else {
                         clearInterval(turnTimerInterval);
@@ -1090,8 +1408,8 @@
                 $('#waiting-turn-screen').fadeIn();
             }
 
-            function startTurnCountdown(seconds) {
-                let totalSeconds = seconds;
+            function startTurnCountdown(seconds, maxTime = 10) {
+                let totalSeconds = maxTime; // Use maxTime for the SVG math
                 clearInterval(turnTimerInterval);
                 
                 function updateTimerVisuals(sec) {
@@ -1099,7 +1417,7 @@
                     let displaySec = sec < 10 ? '0' + sec : sec;
                     $('#turn-timer-active').text(displaySec);
                     
-                    // Animate the SVG ring (175 is the full dash array length)
+                    // Animate the SVG ring based on the TOTAL 10 seconds
                     let offset = 175 - (175 * (sec / totalSeconds));
                     $('#turn-timer-svg-circle').css('stroke-dashoffset', offset);
                     
@@ -1113,7 +1431,7 @@
                     }
                 }
                 
-                // Set initial state
+                // Set initial state using the remaining seconds
                 updateTimerVisuals(seconds);
                 
                 turnTimerInterval = setInterval(() => {
@@ -1126,14 +1444,14 @@
                 }, 1000);
             }
 
-            function renderVotingScreen(contested) {
+            function renderVotingScreen(contested, secondsLeft = 30) {
                 hideOverlay(); 
                 $('#game-arena').hide(); 
                 $('#voting-container').empty();
                 
                 // --- Timer Logic (Formatted as 0:30) ---
                 let totalTime = 30;
-                let timeLeft = totalTime;
+                let timeLeft = secondsLeft;
                 clearInterval(votingTimerInterval);
                 
                 function updateVotingTimerUI(sec) {
@@ -1314,8 +1632,11 @@
 
                 $('#next-field').html(currentCatIndex === activeCategories.length - 1 ? 'FINISH! <i class="fas fa-check ml-2"></i>' : 'NEXT <i class="fas fa-arrow-right ml-2"></i>');
 
-                if (currentCatIndex === 0) $('#prev-field').hide();
-                else $('#prev-field').show();
+                if (currentCatIndex === 0) {
+                    $('#prev-field').css('visibility', 'hidden').show();
+                } else {
+                    $('#prev-field').css('visibility', 'visible').show();
+                }
             }
 
             $('#next-field').click(function (e) {
