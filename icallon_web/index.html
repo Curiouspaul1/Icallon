@@ -616,8 +616,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             let inviteCode = urlParams.get('code');
 
-            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            // let serverURL = 'http://localhost:5000';
+            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            let serverURL = 'http://localhost:5000';
 
             let activeCategories = [];
             let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -897,18 +897,25 @@
                 if (socket && socket.connected) return;
 
                 let token = getOrGenerateToken();
+                let connectionAttempts = 0;
 
                 socket = io(
                     serverURL,
                     {
                         withCredentials: true,
                         transports: ['websocket'],
-                        auth: { username: user, token: token }
+                        auth: { username: user, token: token },
+                        // --- NEW: COLD START CONFIG ---
+                        timeout: 30000, // Give each attempt 30 seconds before declaring it failed
+                        reconnection: true, // Allow it to retry automatically
+                        reconnectionAttempts: 4, // Try up to 4 times (total of ~2 mins)
+                        reconnectionDelay: 2000 // Wait 2 seconds between attempts
                     }
                 );
 
                 socket.on('connect', () => {
                     console.log("📡 Connected to server! SID:", socket.id);
+                    connectionAttempts = 0;
                     localStorage.setItem('username', user);
                     
                     if (inviteCode) {
@@ -918,6 +925,25 @@
                         socket.emit('join', { roomID: gameCode });
                         showOverlay("Joining Room " + gameCode + "...");
                         inviteCode = null; // Clear it so it doesn't double-fire later
+                    }
+                });
+
+                socket.on('connect_error', (err) => {
+                    connectionAttempts++;
+                    console.log(`Connection attempt ${connectionAttempts} failed. Retrying...`);
+                    
+                    // If it's taking a while, tell the user the server is waking up
+                    if (connectionAttempts === 1) {
+                        $('#submit-username').html('<span class="material-symbols-outlined animate-spin text-sm">sync</span> Waking Server...');
+                    }
+
+                    // If it truly fails after all our retries, THEN we show the error
+                    if (connectionAttempts >= 4) {
+                        alert("The server is taking unusually long to wake up. Please refresh and try again.");
+                        $('#submit-username').prop('disabled', false).html('Ready <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>');
+                        if ($('#game-selection-screen').is(':hidden')) switchScreen('username-screen');
+                        socket.disconnect();
+                        connectionAttempts = 0; // reset
                     }
                 });
 
