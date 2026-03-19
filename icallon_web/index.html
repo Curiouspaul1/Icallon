@@ -126,6 +126,13 @@
                     D</div>
             </div>
         </div>
+        <div class="pt-8 flex gap-4 overflow-hidden justify-center opacity-30 pointer-events-none">
+        </div>
+        <div class="absolute bottom-6 left-0 w-full text-center z-20 pointer-events-auto">
+            <a href="https://x.com/Curiouspaul2" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-primary transition-colors text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-1">
+                Made by Curiouspaul <span class="material-symbols-outlined text-sm">open_in_new</span>
+            </a>
+        </div>
     </div>
 
     <div id="game-selection-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden"
@@ -615,8 +622,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             let inviteCode = urlParams.get('code');
 
-            // let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
-            let serverURL = 'http://localhost:5000';
+            let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
+            // let serverURL = 'http://localhost:5000';
 
             let activeCategories = [];
             let gameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
