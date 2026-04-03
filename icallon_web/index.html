@@ -35,7 +35,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-SBH08LL5LT"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
+        function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
         gtag('config', 'G-SBH08LL5LT');
     </script>
@@ -129,7 +129,8 @@
         <div class="pt-8 flex gap-4 overflow-hidden justify-center opacity-30 pointer-events-none">
         </div>
         <div class="absolute bottom-6 left-0 w-full text-center z-20 pointer-events-auto">
-            <a href="https://x.com/Curiouspaul2" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-primary transition-colors text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-1">
+            <a href="https://x.com/Curiouspaul2" target="_blank" rel="noopener noreferrer"
+                class="text-slate-500 hover:text-primary transition-colors text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-1">
                 Made by Curiouspaul <span class="material-symbols-outlined text-sm">open_in_new</span>
             </a>
         </div>
@@ -171,12 +172,14 @@
                 </div>
             </button>
 
-            <button onclick="switchScreen('quick-match-screen')" class="w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group shadow-md">
+            <button onclick="switchScreen('quick-match-screen')"
+                class="w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group shadow-md">
                 <div class="text-left">
                     <h3 class="font-black text-xl text-primary mb-1">QUICK MATCH</h3>
                     <p class="text-slate-400 text-sm font-medium">Classic game, set rounds</p>
                 </div>
-                <div class="size-10 rounded-full bg-slate-700/50 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all text-slate-300">
+                <div
+                    class="size-10 rounded-full bg-slate-700/50 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all text-slate-300">
                     <span class="material-symbols-outlined">bolt</span>
                 </div>
             </button>
@@ -204,20 +207,26 @@
                     <span class="material-symbols-outlined">key</span>
                 </div>
             </button>
-            <button type="button" onclick="$('#how-to-play-modal').fadeIn().css('display', 'flex')" class="mt-4 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest mx-auto">
+            <button type="button" onclick="$('#how-to-play-modal').fadeIn().css('display', 'flex')"
+                class="mt-4 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest mx-auto">
                 <span class="material-symbols-outlined align-middle text-lg mr-1">help</span> How to Play
             </button>
         </main>
     </div>
 
-    <div id="create-game-menu" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        
-        <header class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
-            <button type="button" onclick="switchScreen('game-selection-screen')" class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300">
+    <div id="create-game-menu"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+
+        <header
+            class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
+            <button type="button" onclick="switchScreen('game-selection-screen')"
+                class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300">
                 <span class="material-symbols-outlined">arrow_back</span>
             </button>
             <h1 class="font-bold text-lg tracking-wide uppercase">Game Setup</h1>
-            <div class="size-10"></div> </header>
+            <div class="size-10"></div>
+        </header>
 
         <main class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8">
             <div class="space-y-4">
@@ -226,27 +235,37 @@
                     <h2 class="font-bold text-slate-200 uppercase tracking-wider text-sm">Categories</h2>
                 </div>
                 <div class="space-y-3">
-                    <label class="flex items-center justify-between p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer transition-all">
+                    <label
+                        class="flex items-center justify-between p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer transition-all">
                         <div class="flex flex-col">
                             <span class="text-slate-100 font-bold">Classic Mode</span>
                             <span class="text-xs text-slate-400">Name, Animal, Place, Thing</span>
                         </div>
-                        <input checked class="h-5 w-5 border-primary/30 text-primary focus:ring-primary focus:ring-offset-background-dark bg-transparent cursor-pointer" name="cat_type" type="radio" value="classic"/>
+                        <input checked
+                            class="h-5 w-5 border-primary/30 text-primary focus:ring-primary focus:ring-offset-background-dark bg-transparent cursor-pointer"
+                            name="cat_type" type="radio" value="classic" />
                     </label>
-                    <label class="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-slate-800/50 cursor-pointer hover:border-primary/20 transition-all">
+                    <label
+                        class="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-slate-800/50 cursor-pointer hover:border-primary/20 transition-all">
                         <div class="flex flex-col">
                             <span class="text-slate-100 font-bold">Custom Selection</span>
                             <span class="text-xs text-slate-400">Create your own categories</span>
                         </div>
-                        <input class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary" name="cat_type" type="radio" value="custom"/>
+                        <input
+                            class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary"
+                            name="cat_type" type="radio" value="custom" />
                     </label>
-                    
-                    <div id="custom-cat-panel" style="display: none;" class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4 shadow-inner">
+
+                    <div id="custom-cat-panel" style="display: none;"
+                        class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4 shadow-inner">
                         <div class="flex flex-wrap gap-2" id="cat-chips">
-                            </div>
+                        </div>
                         <div class="flex gap-2">
-                            <input type="text" id="new-cat-input" maxlength="15" placeholder="Add custom (e.g. Movie)..." autocomplete="off" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary placeholder-slate-500">
-                            <button type="button" id="add-cat-btn" class="bg-primary hover:bg-orange-600 px-4 py-2 rounded-lg font-black text-white transition-all active:scale-95">+</button>
+                            <input type="text" id="new-cat-input" maxlength="15"
+                                placeholder="Add custom (e.g. Movie)..." autocomplete="off"
+                                class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary placeholder-slate-500">
+                            <button type="button" id="add-cat-btn"
+                                class="bg-primary hover:bg-orange-600 px-4 py-2 rounded-lg font-black text-white transition-all active:scale-95">+</button>
                         </div>
                         <div class="flex justify-between items-center text-xs font-bold">
                             <span id="cat-error-msg" class="text-red-400 hidden">Max 6 allowed!</span>
@@ -262,37 +281,51 @@
                     <h2 class="font-bold text-slate-200 uppercase tracking-wider text-sm">Allowed Letters</h2>
                 </div>
                 <div class="space-y-3">
-                    <label class="flex items-center justify-between p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer transition-all">
+                    <label
+                        class="flex items-center justify-between p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer transition-all">
                         <div class="flex flex-col">
                             <span class="text-slate-100 font-bold">Default (A-Z)</span>
                             <span class="text-xs text-slate-400">All 26 English letters included</span>
                         </div>
-                        <input checked class="h-5 w-5 border-primary/30 text-primary focus:ring-primary bg-transparent cursor-pointer" name="let_type" type="radio" value="default"/>
+                        <input checked
+                            class="h-5 w-5 border-primary/30 text-primary focus:ring-primary bg-transparent cursor-pointer"
+                            name="let_type" type="radio" value="default" />
                     </label>
-                    <label class="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-slate-800/50 cursor-pointer hover:border-primary/20 transition-all">
+                    <label
+                        class="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-slate-800/50 cursor-pointer hover:border-primary/20 transition-all">
                         <div class="flex flex-col">
                             <span class="text-slate-100 font-bold">Custom Selection</span>
                             <span class="text-xs text-slate-400">Pick exactly which letters to play</span>
                         </div>
-                        <input class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary" name="let_type" type="radio" value="custom"/>
+                        <input
+                            class="h-5 w-5 border-slate-600 bg-transparent cursor-pointer text-primary focus:ring-primary"
+                            name="let_type" type="radio" value="custom" />
                     </label>
 
-                    <div id="custom-let-panel" style="display: none;" class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-3 shadow-inner">
+                    <div id="custom-let-panel" style="display: none;"
+                        class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-3 shadow-inner">
                         <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tap to include</span>
-                            <button type="button" id="toggle-all-letters" class="text-xs text-primary font-bold hover:text-white transition-colors">Select All</button>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tap to
+                                include</span>
+                            <button type="button" id="toggle-all-letters"
+                                class="text-xs text-primary font-bold hover:text-white transition-colors">Select
+                                All</button>
                         </div>
                         <div class="grid grid-cols-6 sm:grid-cols-7 gap-2" id="letter-grid-selector">
-                            </div>
-                        <p class="text-xs font-bold text-red-400 hidden" id="let-error-msg">Select at least 3 letters!</p>
+                        </div>
+                        <p class="text-xs font-bold text-red-400 hidden" id="let-error-msg">Select at least 3 letters!
+                        </p>
                     </div>
                 </div>
             </div>
         </main>
 
-        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none">
-            <button type="button" id="confirm-create-game-btn" class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
-                <div class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
+        <div
+            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none">
+            <button type="button" id="confirm-create-game-btn"
+                class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
+                <div
+                    class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
                     <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
                     <span class="material-symbols-outlined text-white">rocket_launch</span>
                 </div>
@@ -300,31 +333,39 @@
         </div>
     </div>
 
-    <div id="quick-match-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        <header class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
-            <button type="button" onclick="switchScreen('game-selection-screen')" class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300">
+    <div id="quick-match-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <header
+            class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
+            <button type="button" onclick="switchScreen('game-selection-screen')"
+                class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300">
                 <span class="material-symbols-outlined">arrow_back</span>
             </button>
             <h1 class="font-bold text-lg tracking-wide uppercase">Quick Match</h1>
-            <div class="size-10"></div> 
+            <div class="size-10"></div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-6 py-12 max-w-md w-full mx-auto flex flex-col justify-center space-y-8 pb-32">
+        <main
+            class="flex-1 overflow-y-auto px-6 py-12 max-w-md w-full mx-auto flex flex-col justify-center space-y-8 pb-32">
             <div class="text-center space-y-2">
-                <div class="inline-flex items-center justify-center size-20 rounded-full bg-primary/20 text-primary mb-4 border border-primary/30 shadow-[0_0_30px_rgba(236,91,19,0.3)]">
+                <div
+                    class="inline-flex items-center justify-center size-20 rounded-full bg-primary/20 text-primary mb-4 border border-primary/30 shadow-[0_0_30px_rgba(236,91,19,0.3)]">
                     <span class="material-symbols-outlined text-4xl">bolt</span>
                 </div>
                 <h2 class="text-3xl font-black text-white">How many rounds?</h2>
                 <p class="text-slate-400 font-medium text-sm">Classic categories. Random letters.</p>
             </div>
-            
-            <div class="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-8 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+
+            <div
+                class="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-8 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
                 <div class="flex justify-between items-end">
                     <span class="text-slate-400 font-bold uppercase tracking-wider text-sm">Total Rounds</span>
                     <span id="quick-rounds-display" class="text-5xl font-black text-primary drop-shadow-md">10</span>
                 </div>
                 <div>
-                    <input type="range" id="quick-rounds-slider" min="3" max="26" value="10" class="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-primary border border-slate-600">
+                    <input type="range" id="quick-rounds-slider" min="3" max="26" value="10"
+                        class="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-primary border border-slate-600">
                     <div class="flex justify-between text-xs font-bold text-slate-500 mt-3">
                         <span>3 (Quick)</span>
                         <span>26 (Marathon)</span>
@@ -333,9 +374,12 @@
             </div>
         </main>
 
-        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
-            <button type="button" id="confirm-quick-match-btn" class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
-                <div class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
+        <div
+            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
+            <button type="button" id="confirm-quick-match-btn"
+                class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95">
+                <div
+                    class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
                     <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
                     <span class="material-symbols-outlined text-white">rocket_launch</span>
                 </div>
@@ -354,34 +398,43 @@
         </div>
     </div>
 
-    <div id="create-game-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        
-        <header class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
-            <button type="button" id="leave-lobby-btn" class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300">
+    <div id="create-game-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+
+        <header
+            class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
+            <button type="button" id="leave-lobby-btn"
+                class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300">
                 <span class="material-symbols-outlined">arrow_back</span>
             </button>
             <h1 class="font-bold text-lg tracking-wide uppercase">Match Lobby</h1>
-            <div class="size-10"></div> </header>
+            <div class="size-10"></div>
+        </header>
 
         <main class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8">
-            
-            <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-6 text-center relative overflow-hidden shadow-lg">
+
+            <div
+                class="bg-slate-800/50 border border-slate-700 rounded-3xl p-6 text-center relative overflow-hidden shadow-lg">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl"></div>
-                
+
                 <p class="text-slate-400 text-sm font-bold uppercase tracking-widest mb-2">Room Code</p>
-                <h2 id="display-game-code" class="text-5xl font-black text-white tracking-[0.2em] mb-6 drop-shadow-md">----</h2>
-                
+                <h2 id="display-game-code" class="text-5xl font-black text-white tracking-[0.2em] mb-6 drop-shadow-md">
+                    ----</h2>
+
                 <div class="flex gap-3 relative z-10">
-                    <button type="button" id="copy-link-btn" class="flex-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
+                    <button type="button" id="copy-link-btn"
+                        class="flex-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
                         <span class="material-symbols-outlined text-lg">link</span>
                         <span id="copy-btn-text">COPY LINK</span>
                     </button>
-                    <button type="button" id="toggle-qr-btn" class="flex-1 bg-slate-700/50 hover:bg-slate-600/50 text-white border border-slate-600 rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
+                    <button type="button" id="toggle-qr-btn"
+                        class="flex-1 bg-slate-700/50 hover:bg-slate-600/50 text-white border border-slate-600 rounded-xl py-3 flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
                         <span class="material-symbols-outlined text-lg">qr_code_2</span>
                         SHOW QR
                     </button>
                 </div>
-                
+
                 <div id="qr-container" class="mt-4 flex justify-center" style="display: none;">
                     <div class="bg-white p-3 rounded-2xl shadow-inner mt-2">
                         <img id="room-qr-code" src="" class="w-32 h-32" alt="Room QR Code">
@@ -396,118 +449,158 @@
                         <h2 class="font-bold text-slate-200 uppercase tracking-wider text-sm">Players Joined</h2>
                     </div>
                 </div>
-                
+
                 <div id="lobby-avatars" class="grid grid-cols-3 gap-y-6 gap-x-4">
-                    </div>
+                </div>
             </div>
         </main>
 
-        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
-            
-            <button type="button" id="start-game-button" class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed hidden">
-                <div class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
+        <div
+            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
+
+            <button type="button" id="start-game-button"
+                class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 hover:shadow-[0_0_30px_rgba(236,91,19,0.4)] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed hidden">
+                <div
+                    class="bg-background-dark/20 w-full h-full rounded-[14px] p-4 flex items-center justify-center backdrop-blur-sm border border-white/10 gap-2">
                     <span class="font-black text-lg tracking-wider text-white">START MATCH</span>
                     <span class="material-symbols-outlined text-white">play_arrow</span>
                 </div>
             </button>
-            
-            <div id="waiting-msg" class="pointer-events-auto max-w-md w-full flex items-center justify-center p-4 rounded-2xl bg-slate-800/90 border border-slate-700 backdrop-blur-md gap-3 shadow-lg" style="display: none;">
+
+            <div id="waiting-msg"
+                class="pointer-events-auto max-w-md w-full flex items-center justify-center p-4 rounded-2xl bg-slate-800/90 border border-slate-700 backdrop-blur-md gap-3 shadow-lg"
+                style="display: none;">
                 <span class="material-symbols-outlined text-primary animate-spin">sync</span>
                 <span class="font-bold text-slate-300">Waiting for host...</span>
             </div>
         </div>
     </div>
 
-    <div id="game-arena" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        <button type="button" class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg" title="Leave Match">
+    <div id="game-arena"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <button type="button"
+            class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg"
+            title="Leave Match">
             <span class="material-symbols-outlined rotate-180">logout</span>
         </button>
 
-        <button type="button" id="volume-toggle-btn" class="absolute top-6 right-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-primary/50 text-slate-300 backdrop-blur-md shadow-lg" title="Toggle Sound">
+        <button type="button" id="volume-toggle-btn"
+            class="absolute top-6 right-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-primary/50 text-slate-300 backdrop-blur-md shadow-lg"
+            title="Toggle Sound">
             <span class="material-symbols-outlined" id="volume-icon">volume_up</span>
         </button>
 
-        <div id="gameplay-top-bar" class="w-full flex justify-center items-center p-6 bg-transparent sticky top-0 z-20 pointer-events-none" style="display: none;">
-            <div id="turn-indicator" class="bg-slate-800/90 px-6 py-2 rounded-full text-white font-bold text-sm border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md pointer-events-auto">Playing...</div>
+        <div id="gameplay-top-bar"
+            class="w-full flex justify-center items-center p-6 bg-transparent sticky top-0 z-20 pointer-events-none"
+            style="display: none;">
+            <div id="turn-indicator"
+                class="bg-slate-800/90 px-6 py-2 rounded-full text-white font-bold text-sm border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md pointer-events-auto">
+                Playing...</div>
         </div>
 
-        <main class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8 flex flex-col justify-center">
-            
-            <div id="letter-selection" class="w-full flex flex-col items-center justify-center py-4" style="display: none;">
-                
+        <main
+            class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8 flex flex-col justify-center">
+
+            <div id="letter-selection" class="w-full flex flex-col items-center justify-center py-4"
+                style="display: none;">
+
                 <div class="flex items-center justify-between mb-8 w-full max-w-sm mx-auto">
                     <div class="flex flex-col">
                         <h1 class="text-4xl font-black text-white tracking-tight drop-shadow-lg">YOUR TURN</h1>
-                        <p class="text-primary font-bold uppercase tracking-widest text-sm mt-1 flex items-center gap-2">
+                        <p
+                            class="text-primary font-bold uppercase tracking-widest text-sm mt-1 flex items-center gap-2">
                             <span class="material-symbols-outlined text-sm">touch_app</span> Pick a letter
                         </p>
                     </div>
-                    
+
                     <div class="relative w-16 h-16 flex items-center justify-center shrink-0">
                         <svg class="absolute inset-0 w-full h-full -rotate-90">
-                            <circle class="text-slate-800 stroke-current" cx="32" cy="32" fill="transparent" r="28" stroke-width="6"></circle>
-                            <circle id="turn-timer-svg-circle" class="text-primary stroke-current transition-all duration-1000 ease-linear" cx="32" cy="32" fill="transparent" r="28" stroke-dasharray="175" stroke-dashoffset="0" stroke-linecap="round" stroke-width="6"></circle>
+                            <circle class="text-slate-800 stroke-current" cx="32" cy="32" fill="transparent" r="28"
+                                stroke-width="6"></circle>
+                            <circle id="turn-timer-svg-circle"
+                                class="text-primary stroke-current transition-all duration-1000 ease-linear" cx="32"
+                                cy="32" fill="transparent" r="28" stroke-dasharray="175" stroke-dashoffset="0"
+                                stroke-linecap="round" stroke-width="6"></circle>
                         </svg>
                         <span id="turn-timer-active" class="text-2xl font-black text-white relative z-10">10</span>
                     </div>
                 </div>
-                
+
                 <div id="alpha-grid" class="grid grid-cols-4 gap-3 sm:gap-4 max-w-sm mx-auto w-full">
-                    </div>
+                </div>
             </div>
 
-            <div id="waiting-turn-screen" class="w-full flex flex-col items-center justify-center py-12" style="display: none;">
+            <div id="waiting-turn-screen" class="w-full flex flex-col items-center justify-center py-12"
+                style="display: none;">
                 <div class="relative flex items-center justify-center mb-8">
-                    <div class="absolute inset-0 bg-primary/20 rounded-full animate-ping" style="animation-duration: 2s;"></div>
-                    <div class="absolute inset-[-10px] border border-primary/30 rounded-full animate-pulse" style="animation-duration: 3s;"></div>
-                    
-                    <div class="relative w-28 h-28 rounded-full bg-slate-800 border-4 border-primary overflow-hidden flex items-center justify-center z-10 shadow-[0_0_30px_rgba(236,91,19,0.5)]">
+                    <div class="absolute inset-0 bg-primary/20 rounded-full animate-ping"
+                        style="animation-duration: 2s;"></div>
+                    <div class="absolute inset-[-10px] border border-primary/30 rounded-full animate-pulse"
+                        style="animation-duration: 3s;"></div>
+
+                    <div
+                        class="relative w-28 h-28 rounded-full bg-slate-800 border-4 border-primary overflow-hidden flex items-center justify-center z-10 shadow-[0_0_30px_rgba(236,91,19,0.5)]">
                         <img id="waiting-avatar-img" src="" alt="Player Avatar" class="w-full h-full object-cover">
                     </div>
                 </div>
-                
-                <h2 class="text-3xl font-black text-white mb-2 text-center">Waiting for <br><span id="waiting-player-name" class="text-primary tracking-wide">Player</span></h2>
+
+                <h2 class="text-3xl font-black text-white mb-2 text-center">Waiting for <br><span
+                        id="waiting-player-name" class="text-primary tracking-wide">Player</span></h2>
                 <p class="text-slate-400 font-medium text-center">They are choosing a letter...</p>
-                
-                <div class="mt-8 bg-slate-800/80 px-8 py-3 rounded-full border border-slate-700 shadow-inner flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary animate-spin" style="animation-duration: 3s;">hourglass_empty</span>
+
+                <div
+                    class="mt-8 bg-slate-800/80 px-8 py-3 rounded-full border border-slate-700 shadow-inner flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary animate-spin"
+                        style="animation-duration: 3s;">hourglass_empty</span>
                     <span id="waiting-timer-text" class="text-white font-bold text-xl">10s</span>
                 </div>
             </div>
 
-            <div id="dynamic-inputs-area" class="w-full flex flex-col items-center justify-center py-4" style="display: none;">
-                
+            <div id="dynamic-inputs-area" class="w-full flex flex-col items-center justify-center py-4"
+                style="display: none;">
+
                 <div class="flex items-center justify-between mb-6 w-full max-w-sm mx-auto">
                     <div class="flex flex-col">
-                        <p class="text-primary font-bold uppercase tracking-widest text-sm mt-1 flex items-center gap-2">
+                        <p
+                            class="text-primary font-bold uppercase tracking-widest text-sm mt-1 flex items-center gap-2">
                             <span class="material-symbols-outlined text-sm">edit_document</span> Guessing Phase
                         </p>
-                        <h1 class="text-3xl font-black text-white tracking-tight drop-shadow-lg" id="guessing-letter-display">Letter: ?</h1>
+                        <h1 class="text-3xl font-black text-white tracking-tight drop-shadow-lg"
+                            id="guessing-letter-display">Letter: ?</h1>
                     </div>
-                    
+
                     <div class="relative w-16 h-16 flex items-center justify-center shrink-0">
                         <svg class="absolute inset-0 w-full h-full -rotate-90">
-                            <circle class="text-slate-800 stroke-current" cx="32" cy="32" fill="transparent" r="28" stroke-width="6"></circle>
-                            <circle id="guessing-timer-svg" class="text-primary stroke-current transition-all duration-1000 ease-linear" cx="32" cy="32" fill="transparent" r="28" stroke-dasharray="175" stroke-dashoffset="0" stroke-linecap="round" stroke-width="6"></circle>
+                            <circle class="text-slate-800 stroke-current" cx="32" cy="32" fill="transparent" r="28"
+                                stroke-width="6"></circle>
+                            <circle id="guessing-timer-svg"
+                                class="text-primary stroke-current transition-all duration-1000 ease-linear" cx="32"
+                                cy="32" fill="transparent" r="28" stroke-dasharray="175" stroke-dashoffset="0"
+                                stroke-linecap="round" stroke-width="6"></circle>
                         </svg>
                         <span id="guessing-timer-text" class="text-2xl font-black text-white relative z-10">30</span>
                     </div>
                 </div>
 
-                <div class="bg-slate-800/80 border border-slate-700 rounded-3xl p-6 relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
+                <div
+                    class="bg-slate-800/80 border border-slate-700 rounded-3xl p-6 relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full max-w-sm mx-auto">
                     <small class="text-primary font-bold tracking-widest uppercase">CATEGORY</small>
                     <h2 id="current-category-label" class="text-3xl font-black my-4 text-white drop-shadow-md">Name</h2>
-                    
+
                     <input type="text" id="current-input" placeholder="Type answer here..." autocomplete="off"
-                           class="w-full bg-background-dark/80 border-2 border-slate-600 rounded-xl py-5 px-4 text-center text-xl font-bold text-white focus:border-primary focus:ring-0 mb-4 shadow-inner">
-                    
+                        class="w-full bg-background-dark/80 border-2 border-slate-600 rounded-xl py-5 px-4 text-center text-xl font-bold text-white focus:border-primary focus:ring-0 mb-4 shadow-inner">
+
                     <div class="flex justify-center gap-2 mb-6" id="dynamic-dots"></div>
-                    
+
                     <div class="flex gap-3 mt-4">
-                        <button type="button" id="prev-field" class="size-14 rounded-2xl bg-slate-700 flex items-center justify-center hover:bg-slate-600 transition-colors active:scale-95 shadow-md" style="display: none;">
+                        <button type="button" id="prev-field"
+                            class="size-14 rounded-2xl bg-slate-700 flex items-center justify-center hover:bg-slate-600 transition-colors active:scale-95 shadow-md"
+                            style="display: none;">
                             <span class="material-symbols-outlined">arrow_back</span>
                         </button>
-                        <button type="button" id="next-field" class="flex-1 rounded-2xl bg-gradient-to-r from-primary to-orange-500 hover:shadow-[0_0_20px_rgba(236,91,19,0.4)] transition-all active:scale-95 font-black text-lg flex items-center justify-center gap-2 text-white shadow-md">
+                        <button type="button" id="next-field"
+                            class="flex-1 rounded-2xl bg-gradient-to-r from-primary to-orange-500 hover:shadow-[0_0_20px_rgba(236,91,19,0.4)] transition-all active:scale-95 font-black text-lg flex items-center justify-center gap-2 text-white shadow-md">
                             NEXT <span class="material-symbols-outlined">arrow_forward</span>
                         </button>
                     </div>
@@ -516,34 +609,44 @@
         </main>
     </div>
 
-    <div id="voting-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        <button type="button" class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg" title="Leave Match">
+    <div id="voting-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <button type="button"
+            class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg"
+            title="Leave Match">
             <span class="material-symbols-outlined">logout</span>
         </button>
         <main class="flex-1 overflow-y-auto px-6 py-8 pb-40 max-w-md w-full mx-auto relative z-10">
-            
+
             <div class="flex items-center justify-between mb-8">
                 <div>
-                    <span class="text-primary font-bold text-sm tracking-widest uppercase mb-1 block">Voting Phase</span>
+                    <span class="text-primary font-bold text-sm tracking-widest uppercase mb-1 block">Voting
+                        Phase</span>
                     <h1 class="text-3xl font-black text-white">Is it valid?</h1>
                 </div>
-                <div class="bg-primary/20 text-primary border-2 border-primary/30 px-4 py-2 rounded-2xl flex items-center gap-2">
+                <div
+                    class="bg-primary/20 text-primary border-2 border-primary/30 px-4 py-2 rounded-2xl flex items-center gap-2">
                     <span class="material-symbols-outlined">timer</span>
                     <span id="voting-timer" class="font-black text-xl">0:30</span>
                 </div>
             </div>
 
             <div id="voting-container" class="space-y-6">
-                </div>
-            
+            </div>
+
         </main>
 
-        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex flex-col items-center z-20 pointer-events-none">
-            
-            <p id="voting-status" class="text-primary font-bold mb-4 pointer-events-auto drop-shadow-md bg-slate-900/80 px-4 py-2 rounded-full border border-primary/30" style="display: none;">Waiting for others...</p>
-            
+        <div
+            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex flex-col items-center z-20 pointer-events-none">
+
+            <p id="voting-status"
+                class="text-primary font-bold mb-4 pointer-events-auto drop-shadow-md bg-slate-900/80 px-4 py-2 rounded-full border border-primary/30"
+                style="display: none;">Waiting for others...</p>
+
             <div class="max-w-md w-full pointer-events-auto">
-                <button type="button" id="submit-votes" class="w-full bg-primary hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-[0_10px_30px_rgba(236,91,19,0.4)] transition-transform active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2">
+                <button type="button" id="submit-votes"
+                    class="w-full bg-primary hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-[0_10px_30px_rgba(236,91,19,0.4)] transition-transform active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">gavel</span>
                     Submit All Votes
                 </button>
@@ -551,15 +654,23 @@
         </div>
     </div>
 
-    <div id="leaderboard-screen" class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display" style="display: none;">
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-64 bg-primary/20 blur-[100px] pointer-events-none"></div>
+    <div id="leaderboard-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <div
+            class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-64 bg-primary/20 blur-[100px] pointer-events-none">
+        </div>
 
-        <button type="button" class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg" title="Leave Match">
+        <button type="button"
+            class="leave-room-btn absolute top-6 left-6 z-50 size-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700 hover:border-red-500/50 hover:text-red-500 transition-colors active:scale-95 text-slate-300 backdrop-blur-md shadow-lg"
+            title="Leave Match">
             <span class="material-symbols-outlined">logout</span>
         </button>
 
-        <main class="flex-1 overflow-y-auto px-6 py-12 pb-32 max-w-md w-full mx-auto flex flex-col items-center relative z-10">
-            <div class="inline-flex items-center justify-center size-20 rounded-full bg-gradient-to-br from-primary to-yellow-500 shadow-[0_0_40px_rgba(236,91,19,0.5)] mb-6 border-4 border-background-dark">
+        <main
+            class="flex-1 overflow-y-auto px-6 py-12 pb-32 max-w-md w-full mx-auto flex flex-col items-center relative z-10">
+            <div
+                class="inline-flex items-center justify-center size-20 rounded-full bg-gradient-to-br from-primary to-yellow-500 shadow-[0_0_40px_rgba(236,91,19,0.5)] mb-6 border-4 border-background-dark">
                 <span class="material-symbols-outlined text-4xl text-white">trophy</span>
             </div>
 
@@ -567,26 +678,80 @@
             <p class="text-slate-400 font-bold mb-8 uppercase tracking-widest text-sm">Round Results</p>
 
             <div id="leaderboard-container" class="w-full space-y-3">
+            </div>
+
+            <div
+                class="mt-10 text-center bg-slate-800/50 px-8 py-4 rounded-3xl border border-slate-700 backdrop-blur-md">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Next round begins in</p>
+                <p id="next-round-timer"
+                    class="text-4xl font-black text-primary mt-1 drop-shadow-[0_0_10px_rgba(236,91,19,0.5)]">10</p>
+            </div>
+            <div id="round-transition-panel"
+                class="mt-10 text-center bg-slate-800/50 px-8 py-4 rounded-3xl border border-slate-700 backdrop-blur-md">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Next round begins in</p>
+                <p id="next-round-timer"
+                    class="text-4xl font-black text-primary mt-1 drop-shadow-[0_0_10px_rgba(236,91,19,0.5)]">10</p>
+            </div>
+
+            <div id="game-over-panel" class="mt-8 w-full max-w-sm" style="display: none;">
+                <div class="text-center mb-6">
+                    <span class="text-primary font-black uppercase tracking-widest text-sm">Game Over</span>
+                    <h2 class="text-2xl font-bold text-white">All letters exhausted!</h2>
                 </div>
 
-            <div class="mt-10 text-center bg-slate-800/50 px-8 py-4 rounded-3xl border border-slate-700 backdrop-blur-md">
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Next round begins in</p>
-                <p id="next-round-timer" class="text-4xl font-black text-primary mt-1 drop-shadow-[0_0_10px_rgba(236,91,19,0.5)]">10</p>
+                <div id="host-end-controls" class="space-y-3" style="display: none;">
+                    <button type="button" id="restart-match-btn"
+                        class="w-full bg-gradient-to-r from-primary to-orange-500 hover:shadow-[0_0_20px_rgba(236,91,19,0.4)] text-white font-black py-4 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">replay</span> RESTART MATCH
+                    </button>
+                    <button type="button" id="end-match-btn"
+                        class="w-full bg-slate-800 hover:bg-slate-700 border border-red-500/30 text-red-400 font-bold py-4 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">delete</span> END MATCH
+                    </button>
+                    <p class="text-center text-slate-500 text-xs font-bold mt-2">Room auto-closes in <span
+                            id="self-destruct-timer" class="text-red-400">30</span>s</p>
+                </div>
+
+                <div id="player-end-controls" class="space-y-4" style="display: none;">
+                    <div class="flex items-center justify-center gap-2 text-slate-400">
+                        <span class="material-symbols-outlined animate-spin text-sm">sync</span>
+                        <span class="font-bold text-sm">Waiting for host...</span>
+                    </div>
+                    <button type="button" id="exit-match-btn"
+                        class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-4 rounded-2xl transition-all active:scale-95">
+                        EXIT TO MENU
+                    </button>
+                </div>
             </div>
         </main>
     </div>
 
-    <div id="how-to-play-modal" style="display: none;" class="fixed inset-0 z-[999] bg-background-dark/90 backdrop-blur-sm items-center justify-center p-6">
+    <div id="how-to-play-modal" style="display: none;"
+        class="fixed inset-0 z-[999] bg-background-dark/90 backdrop-blur-sm items-center justify-center p-6">
         <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative">
-            <button onclick="$('#how-to-play-modal').fadeOut()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900 rounded-full p-1"><span class="material-symbols-outlined">close</span></button>
+            <button onclick="$('#how-to-play-modal').fadeOut()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900 rounded-full p-1"><span
+                    class="material-symbols-outlined">close</span></button>
             <h2 class="text-2xl font-black text-white mb-6 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">menu_book</span> Rules
             </h2>
             <ul class="space-y-4 text-sm text-slate-300 font-medium">
-                <li class="flex gap-3"><span class="text-primary font-black text-lg">1</span> <div><strong class="text-white block">The Letter:</strong> Every round, a player picks a letter from the board (or one is randomly chosen in Quick Match).</div></li>
-                <li class="flex gap-3"><span class="text-primary font-black text-lg">2</span> <div><strong class="text-white block">The Guessing:</strong> Race against the clock to type words that start with that exact letter for every category.</div></li>
-                <li class="flex gap-3"><span class="text-primary font-black text-lg">3</span> <div><strong class="text-white block">The Voting:</strong> Custom categories or unrecognized words go to a vote. The majority rules!</div></li>
-                <li class="flex gap-3"><span class="text-primary font-black text-lg">4</span> <div><strong class="text-white block">Scoring:</strong> Valid words get 10 points. The highest score at the end of the rounds wins the game.</div></li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">1</span>
+                    <div><strong class="text-white block">The Letter:</strong> Every round, a player picks a letter from
+                        the board (or one is randomly chosen in Quick Match).</div>
+                </li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">2</span>
+                    <div><strong class="text-white block">The Guessing:</strong> Race against the clock to type words
+                        that start with that exact letter for every category.</div>
+                </li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">3</span>
+                    <div><strong class="text-white block">The Voting:</strong> Custom categories or unrecognized words
+                        go to a vote. The majority rules!</div>
+                </li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">4</span>
+                    <div><strong class="text-white block">Scoring:</strong> Valid words get 10 points. The highest score
+                        at the end of the rounds wins the game.</div>
+                </li>
             </ul>
         </div>
     </div>
@@ -619,6 +784,18 @@
             let leaderboardTimerInterval;
             let votingTimerInterval;
 
+            function clearAllGameTimers() {
+                if (typeof turnTimerInterval !== 'undefined') clearInterval(turnTimerInterval);
+                if (typeof guessingTimerInterval !== 'undefined') clearInterval(guessingTimerInterval);
+                if (typeof votingTimerInterval !== 'undefined') clearInterval(votingTimerInterval);
+                if (typeof leaderboardTimerInterval !== 'undefined') clearInterval(leaderboardTimerInterval);
+                if (typeof roundTimer !== 'undefined') clearInterval(roundTimer);
+
+                // Hide any active timer UIs as a safety precaution
+                $('#guessing-timer-text').removeClass('text-red-500').addClass('text-white');
+                $('#turn-timer-active').removeClass('text-red-500').addClass('text-white');
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             let inviteCode = urlParams.get('code');
 
@@ -630,18 +807,18 @@
             let currentCatIndex = 0;
             let activeInputs = {};
             // --- Track players to detect who joins/leaves ---
-            let currentPlayers = []; 
+            let currentPlayers = [];
 
             // --- Helper: Render Sleek Avatars ---
             // function renderLobbyAvatars(players) {
             //     $('#lobby-avatars').empty(); 
             //     let myUsername = localStorage.getItem('username');
-                
+
             //     players.forEach(p => { 
             //         let isMe = (p === myUsername);
             //         // Use Dicebear API to generate a cool random avatar based on their name
             //         let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${p}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
-                    
+
             //         let html = `
             //             <div class="flex flex-col items-center gap-2">
             //                 <div class="relative">
@@ -656,23 +833,23 @@
             //     });
             // }
             let isMuted = false;
-            $('#volume-toggle-btn').click(function(e) {
+            $('#volume-toggle-btn').click(function (e) {
                 e.preventDefault();
                 isMuted = !isMuted;
                 $('#volume-icon').text(isMuted ? 'volume_off' : 'volume_up');
-                
+
                 // This targets any <audio> tags you bring over from your original app
                 $('audio').prop('muted', isMuted);
             });
             function renderLobbyAvatars(players) {
                 $('#lobby-avatars').empty();
                 let myUsername = localStorage.getItem('username');
-                
+
                 players.forEach(p => {
                     let isMe = (p === myUsername);
                     // Generates a unique cool avatar based on the name
                     let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${p}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
-                    
+
                     let html = `
                         <div class="flex flex-col items-center gap-2">
                             <div class="relative">
@@ -727,7 +904,7 @@
             });
 
             // --- CUSTOM GAME CREATION LOGIC ---
-            
+
             let customCategories = ["Name", "Animal", "Place", "Thing"];
             let customLetters = new Set(); // Stores letters like 'A', 'B'
 
@@ -745,7 +922,7 @@
                             </button>
                         </div>
                     `);
-                    chip.find('button').click(function() {
+                    chip.find('button').click(function () {
                         customCategories.splice($(this).data('idx'), 1);
                         renderCategoryChips();
                     });
@@ -756,13 +933,13 @@
             }
 
             // Add custom category
-            $('#add-cat-btn').click(function() {
+            $('#add-cat-btn').click(function () {
                 let val = $('#new-cat-input').val().trim();
                 if (!val) return;
-                
+
                 // Capitalize first letter for neatness
                 val = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-                
+
                 if (customCategories.length >= 6) {
                     $('#cat-error-msg').text("Max 6 allowed!").show();
                     return;
@@ -771,23 +948,23 @@
                     $('#cat-error-msg').text("Already added!").show();
                     return;
                 }
-                
+
                 customCategories.push(val);
                 $('#new-cat-input').val('');
                 renderCategoryChips();
             });
 
-            $('#quick-rounds-slider').on('input', function() {
+            $('#quick-rounds-slider').on('input', function () {
                 $('#quick-rounds-display').text($(this).val());
             });
 
             // Handle the submission
-            $('#confirm-quick-match-btn').off('click').on('click', function(e) {
+            $('#confirm-quick-match-btn').off('click').on('click', function (e) {
                 e.preventDefault();
-                
+
                 let numRounds = parseInt($('#quick-rounds-slider').val());
                 let finalCategories = ["Name", "Animal", "Place", "Thing"]; // Lock to classic
-                
+
                 // Shuffle the alphabet and pick N random letters
                 let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
                 for (let i = alphabet.length - 1; i > 0; i--) {
@@ -795,7 +972,7 @@
                     [alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]];
                 }
                 let finalLetters = alphabet.slice(0, numRounds).join('');
-                
+
                 showOverlay("Creating room...");
                 if (typeof gtag === 'function') {
                     gtag('event', 'create_room', { 'mode': 'quick_match', 'rounds': numRounds });
@@ -817,7 +994,7 @@
                             ${letter}
                         </button>
                     `);
-                    btn.click(function() {
+                    btn.click(function () {
                         if (customLetters.has(letter)) customLetters.delete(letter);
                         else customLetters.add(letter);
                         renderLetterGrid();
@@ -827,7 +1004,7 @@
             }
 
             // Quick Select / Deselect All
-            $('#toggle-all-letters').click(function() {
+            $('#toggle-all-letters').click(function () {
                 if (customLetters.size === 26) {
                     customLetters.clear();
                     $(this).text("Select All");
@@ -843,11 +1020,11 @@
             renderLetterGrid();
 
             // Toggle panels when radio buttons change
-            $('input[type=radio]').change(function() {
+            $('input[type=radio]').change(function () {
                 // Style updates
                 $(this).closest('.space-y-3').find('label').removeClass('border-primary bg-primary/5').addClass('border-transparent bg-slate-800/50');
                 $(this).closest('label').removeClass('border-transparent bg-slate-800/50').addClass('border-primary bg-primary/5');
-                
+
                 // Show/Hide Panels
                 if ($(this).attr('name') === 'cat_type') {
                     if ($(this).val() === 'custom') $('#custom-cat-panel').slideDown(200);
@@ -860,15 +1037,15 @@
             });
 
             // --- CREATE GAME SUBMISSION ---
-            $('#confirm-create-game-btn').off('click').on('click', function(e) {
+            $('#confirm-create-game-btn').off('click').on('click', function (e) {
                 e.preventDefault();
-                
+
                 let isCustomCat = $('input[name="cat_type"]:checked').val() === 'custom';
                 let isCustomLet = $('input[name="let_type"]:checked').val() === 'custom';
-                
+
                 let finalCategories = null; // Backend defaults if null
                 let finalLetters = null;    // Backend defaults if null
-                
+
                 // Validation for custom selections
                 if (isCustomCat) {
                     if (customCategories.length === 0) {
@@ -877,7 +1054,7 @@
                     }
                     finalCategories = [...customCategories];
                 }
-                
+
                 if (isCustomLet) {
                     if (customLetters.size < 3) {
                         $('#let-error-msg').show();
@@ -885,14 +1062,14 @@
                     }
                     $('#let-error-msg').hide();
                     // Convert Set to string (e.g., "ABCEFG")
-                    finalLetters = Array.from(customLetters).join(''); 
+                    finalLetters = Array.from(customLetters).join('');
                 }
-                
+
                 showOverlay("Creating room...");
                 if (typeof gtag === 'function') {
-                    gtag('event', 'create_room', { 
-                        'mode': 'standard', 
-                        'categories': finalCategories ? finalCategories.length : 4 
+                    gtag('event', 'create_room', {
+                        'mode': 'standard',
+                        'categories': finalCategories ? finalCategories.length : 4
                     });
                 }
                 socket.emit('create', { categories: finalCategories, allowed_letters: finalLetters });
@@ -923,11 +1100,11 @@
                     console.log("📡 Connected to server! SID:", socket.id);
                     connectionAttempts = 0;
                     localStorage.setItem('username', user);
-                    
+
                     if (inviteCode) {
                         isJoiningViaLink = true;
                         gameCode = inviteCode;
-                        window.history.replaceState({}, document.title, "/"); 
+                        window.history.replaceState({}, document.title, "/");
                         socket.emit('join', { roomID: gameCode });
                         showOverlay("Joining Room " + gameCode + "...");
                         inviteCode = null; // Clear it so it doesn't double-fire later
@@ -937,7 +1114,7 @@
                 socket.on('connect_error', (err) => {
                     connectionAttempts++;
                     console.log(`Connection attempt ${connectionAttempts} failed. Retrying...`);
-                    
+
                     // If it's taking a while, tell the user the server is waking up
                     if (connectionAttempts === 1) {
                         $('#submit-username').html('<span class="material-symbols-outlined animate-spin text-sm">sync</span> Waking Server...');
@@ -986,6 +1163,47 @@
                     switchScreen('create-game-screen');
                 });
 
+                // --- NEW EVENT: GAME OVER ---
+                socket.on('game_over', (data) => {
+                    clearAllGameTimers();
+                    hideOverlay();
+
+                    $('#round-transition-panel').hide(); // Hide the 10s "Next round" text
+                    $('#game-over-panel').fadeIn();      // Show the Game Over controls
+
+                    if (isHost) {
+                        $('#host-end-controls').show();
+                        $('#player-end-controls').hide();
+
+                        // Start the visible 30s countdown for the host
+                        let sdTime = 30;
+                        $('#self-destruct-timer').text(sdTime);
+                        let sdInterval = setInterval(() => {
+                            sdTime--;
+                            if (sdTime >= 0) {
+                                $('#self-destruct-timer').text(sdTime);
+                            } else {
+                                clearInterval(sdInterval);
+                            }
+                        }, 1000);
+
+                    } else {
+                        $('#host-end-controls').hide();
+                        $('#player-end-controls').show();
+                    }
+                });
+
+                // --- NEW EVENT: ROOM DESTROYED ---
+                socket.on('room_destroyed', (data) => {
+                    clearAllGameTimers();
+                    alert(data.message);
+
+                    // Reset everything and kick back to home
+                    gameCode = null;
+                    isHost = false;
+                    switchScreen('game-selection-screen');
+                });
+
                 socket.on('public_room_found', (data) => {
                     hideOverlay();
                     gameCode = data.room_id;
@@ -1012,7 +1230,7 @@
 
                 socket.on('player_joined', (players) => {
                     hideOverlay();
-                    
+
                     // 1. Identify who joined for the notification
                     let joinedPlayer = players.find(p => !currentPlayers.includes(p));
                     if (joinedPlayer && currentPlayers.length > 0) {
@@ -1022,7 +1240,7 @@
 
                     // 2. Update UI Avatars
                     renderLobbyAvatars(players);
-                    
+
                     // unfreeze game if need be
                     if (players.length >= 2 && $('#results-overlay p').text().includes("Player disconnected")) {
                         hideOverlay();
@@ -1039,7 +1257,7 @@
                     if (isHost) {
                         $('#start-game-button').show().prop('disabled', players.length < 2);
                         $('#waiting-msg').hide();
-                        
+
                         let joinLink = `${window.location.origin}/?code=${gameCode}`;
                         let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                         $('#room-qr-code').attr('src', qrUrl);
@@ -1095,33 +1313,33 @@
                     }
                 });
 
-                socket.on('private_player_turn', (data) => { 
+                socket.on('private_player_turn', (data) => {
                     switchScreen('game-arena');
-                    showLetterSelection(data.disabledLetters); 
-                    startTurnCountdown(10); 
+                    showLetterSelection(data.disabledLetters);
+                    startTurnCountdown(10);
                 });
 
-                socket.on('public_player_turn', (player) => { 
+                socket.on('public_player_turn', (player) => {
                     switchScreen('game-arena');
-                    if (player !== localStorage.getItem('username')) { 
-                        $('#letter-selection').hide(); 
-                        waitTurnTimer(player); 
-                    } 
+                    if (player !== localStorage.getItem('username')) {
+                        $('#letter-selection').hide();
+                        waitTurnTimer(player);
+                    }
                 });
 
                 function startGuessingTimer(secondsLeft) {
-                    let totalTime = 30; 
+                    let totalTime = 30;
                     let t = secondsLeft;
                     clearInterval(guessingTimerInterval);
-                    
+
                     function updateGuessTimerUI(sec) {
                         let displaySec = sec < 10 ? '0' + sec : sec;
                         $('#guessing-timer-text').text(displaySec);
-                        
+
                         let offset = 175 - (175 * (sec / totalTime));
                         $('#guessing-timer-svg').css('stroke-dashoffset', offset);
-                        
-                        if(sec <= 5) {
+
+                        if (sec <= 5) {
                             $('#guessing-timer-text').addClass('text-red-500').removeClass('text-white');
                             $('#guessing-timer-svg').addClass('text-red-500').removeClass('text-primary');
                         } else {
@@ -1129,7 +1347,7 @@
                             $('#guessing-timer-svg').removeClass('text-red-500').addClass('text-primary');
                         }
                     }
-                    
+
                     updateGuessTimerUI(t);
                     guessingTimerInterval = setInterval(() => {
                         t--;
@@ -1142,25 +1360,26 @@
                     }, 1000);
                 }
 
-                socket.on('letter_chosen', (letter) => { 
-                    clearInterval(turnTimerInterval); 
-                    currentLetter = letter; 
-                    
-                    $('#letter-selection').hide(); 
+                socket.on('letter_chosen', (letter) => {
+                    clearAllGameTimers();
+                    clearInterval(turnTimerInterval);
+                    currentLetter = letter;
+
+                    $('#letter-selection').hide();
                     $('#waiting-turn-screen').hide();
-                    
+
                     $('#gameplay-top-bar').fadeIn();
-                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>`); 
-                    
+                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>`);
+
                     $('#guessing-letter-display').text(`Letter: ${letter}`);
-                    
-                    currentCatIndex = 0; 
-                    activeInputs = {}; 
-                    updateInputUI(); 
-                    $('#dynamic-inputs-area').fadeIn(); 
-                    
+
+                    currentCatIndex = 0;
+                    activeInputs = {};
+                    updateInputUI();
+                    $('#dynamic-inputs-area').fadeIn();
+
                     // Call our new extracted function
-                    startGuessingTimer(30); 
+                    startGuessingTimer(30);
                 });
 
                 socket.on('force_submit', () => {
@@ -1169,6 +1388,7 @@
                 });
 
                 socket.on('start_voting', (contested) => {
+                    clearAllGameTimers();
                     try {
                         renderVotingScreen(contested);
                     } catch (e) {
@@ -1177,42 +1397,43 @@
                     }
                 });
 
-                socket.on('vote_update', (items) => { 
-                    items.forEach(item => { 
+                socket.on('vote_update', (items) => {
+                    items.forEach(item => {
                         let yesVotes = item.votes_yes || 0;
                         let noVotes = item.votes_no || 0;
                         let totalVotes = yesVotes + noVotes;
-                        
+
                         let yesPct = totalVotes === 0 ? 50 : (yesVotes / totalVotes) * 100;
                         let noPct = totalVotes === 0 ? 50 : (noVotes / totalVotes) * 100;
-                        
+
                         $(`#bar-yes-${item.id}`).css('width', `${yesPct}%`);
                         $(`#bar-no-${item.id}`).css('width', `${noPct}%`);
                         $(`#tally-text-${item.id}`).text(`${yesVotes} / ${noVotes}`);
-                    }); 
+                    });
                 });
 
-                socket.on('round_result', (scores) => { 
+                socket.on('round_result', (scores) => {
+                    clearAllGameTimers();
                     clearInterval(votingTimerInterval);
-                    hideOverlay(); 
-                    $('#voting-screen').hide(); 
-                    $('#game-arena').hide(); 
-                    
+                    hideOverlay();
+                    $('#voting-screen').hide();
+                    $('#game-arena').hide();
+
                     // 1. Sort Scores Highest to Lowest
                     let sortedPlayers = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
                     let myUsername = localStorage.getItem('username');
-                    
+
                     // 2. Build Leaderboard UI
                     $('#leaderboard-container').empty();
                     sortedPlayers.forEach((player, index) => {
                         let rank = index + 1;
                         let pts = scores[player];
                         let isMe = player === myUsername;
-                        
+
                         // Assign colors based on rank
                         let medalColor = rank === 1 ? 'text-yellow-400' : (rank === 2 ? 'text-slate-300' : (rank === 3 ? 'text-amber-600' : 'text-slate-600'));
                         let cardStyle = isMe ? 'bg-primary/20 border-primary' : 'bg-slate-800/80 border-slate-700';
-                        
+
                         let html = `
                             <div class="${cardStyle} border rounded-2xl p-4 flex items-center justify-between shadow-md">
                                 <div class="flex items-center gap-4">
@@ -1224,34 +1445,35 @@
                         `;
                         $('#leaderboard-container').append(html);
                     });
-                    
+
                     // 3. Start 10s Countdown (Matches server's gevent.sleep(10))
                     let nextRoundT = 10;
                     $('#next-round-timer').text(nextRoundT);
                     clearInterval(leaderboardTimerInterval);
                     leaderboardTimerInterval = setInterval(() => {
                         nextRoundT--;
-                        if(nextRoundT >= 0) {
+                        if (nextRoundT >= 0) {
                             $('#next-round-timer').text(nextRoundT);
                         } else {
                             clearInterval(leaderboardTimerInterval);
                         }
                     }, 1000);
-                    
+
                     switchScreen('leaderboard-screen');
                 });
 
                 socket.on('info_toast', (data) => showToast(data.message));
 
                 socket.on('restore_session', (data) => {
-                    hideOverlay(); 
+                    hideOverlay();
+                    clearAllGameTimers();
                     gameCode = data.room_id;
                     isHost = data.is_host;
-                    activeCategories = data.categories || []; 
+                    activeCategories = data.categories || [];
                     gameAlphabet = data.allowed_letters || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                    
+
                     $('#display-game-code').text(gameCode);
-                    
+
                     // Call the avatar generator we made earlier
                     if (typeof renderLobbyAvatars === 'function') {
                         currentPlayers = data.players;
@@ -1270,18 +1492,18 @@
                         } else if (state === 'answering') {
                             switchScreen('game-arena');
                             currentLetter = data.current_letter;
-                            
-                            $('#letter-selection').hide(); 
+
+                            $('#letter-selection').hide();
                             $('#waiting-turn-screen').hide();
-                            
+
                             $('#gameplay-top-bar').fadeIn();
-                            $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${currentLetter}</span>`); 
+                            $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${currentLetter}</span>`);
                             $('#guessing-letter-display').text(`Letter: ${currentLetter}`);
-                            
-                            currentCatIndex = 0; 
-                            activeInputs = {}; 
-                            updateInputUI(); 
-                            $('#dynamic-inputs-area').fadeIn(); 
+
+                            currentCatIndex = 0;
+                            activeInputs = {};
+                            updateInputUI();
+                            $('#dynamic-inputs-area').fadeIn();
 
                             // Start the timer with the exact remaining time
                             let elapsed = totalDuration - timeLeft;
@@ -1291,36 +1513,36 @@
                         } else if (state === 'picking') {
                             switchScreen('game-arena');
                             let pickTime = timeLeft !== null ? timeLeft : 10;
-                            
+
                             if (data.turn_player === localStorage.getItem('username')) {
                                 showLetterSelection(data.used_letters || []);
-                                startTurnCountdown(pickTime, 10); 
+                                startTurnCountdown(pickTime, 10);
                             } else {
                                 waitTurnTimer(data.turn_player, pickTime);
                             }
                         } else if (state === 'leaderboard') {
                             // Trigger your existing leaderboard display logic
                             // data.scores contains the scores we just passed from the backend
-                            
+
                             // Note: Since your socket.on('round_result') already handles sorting 
                             // and displaying, you can just manually trigger that same logic:
-                            
+
                             let mockScores = data.scores || {};
                             // Your existing logic uses a 10s timer, we sync it to the real remaining time
-                            let remaining = data.time_left !== undefined ? data.time_left : 10; 
-                            
+                            let remaining = data.time_left !== undefined ? data.time_left : 10;
+
                             // To avoid rewriting your UI code, just emit a local event or extract 
                             // your leaderboard UI building code into a function and call it here.
-                            
+
                             console.log("Restoring to leaderboard with time:", remaining);
                         } else {
                             // STATE 3: Default/Fallback
                             switchScreen('game-arena');
                             let pickTime = timeLeft !== null ? timeLeft : 10;
-                            
+
                             if (data.turn_player === localStorage.getItem('username')) {
                                 showLetterSelection(data.used_letters || []);
-                                startTurnCountdown(pickTime, 10); 
+                                startTurnCountdown(pickTime, 10);
                             } else {
                                 waitTurnTimer(data.turn_player, pickTime);
                             }
@@ -1342,23 +1564,23 @@
                 });
             }
 
-            $('#copy-link-btn').off('click').on('click', function(e) {
+            $('#copy-link-btn').off('click').on('click', function (e) {
                 e.preventDefault();
-                if(!gameCode) return;
-                
+                if (!gameCode) return;
+
                 // Construct the link correctly based on origin
                 const link = `${window.location.origin}/?code=${gameCode}`;
-                
+
                 navigator.clipboard.writeText(link).then(() => {
                     // Visual feedback on the button
                     let $btn = $(this);
                     let $text = $('#copy-btn-text');
                     let originalHTML = $btn.html();
-                    
+
                     $btn.removeClass('bg-primary/10 text-primary border-primary/30')
                         .addClass('bg-green-500/20 text-green-400 border-green-500/50');
                     $btn.html('<span class="material-symbols-outlined text-lg">check_circle</span> <span class="font-bold">COPIED!</span>');
-                    
+
                     setTimeout(() => {
                         $btn.html(originalHTML);
                         $btn.removeClass('bg-green-500/20 text-green-400 border-green-500/50')
@@ -1367,30 +1589,47 @@
                 });
             });
 
-            // --- LEAVE MATCH LOGIC ---
-            $('.leave-room-btn, #leave-lobby-btn').off('click').on('click', function(e) {
+            // --- GAME OVER BUTTONS ---
+            $('#restart-match-btn').click(function(e) {
                 e.preventDefault();
-                
+                socket.emit('restart_game', { room_id: gameCode });
+            });
+
+            $('#end-match-btn').click(function(e) {
+                e.preventDefault();
+                socket.emit('force_end_game', { room_id: gameCode });
+            });
+
+            $('#exit-match-btn').click(function(e) {
+                e.preventDefault();
+                socket.emit('leave_room', { room_id: gameCode });
+                switchScreen('game-selection-screen');
+            });
+
+            // --- LEAVE MATCH LOGIC ---
+            $('.leave-room-btn, #leave-lobby-btn').off('click').on('click', function (e) {
+                e.preventDefault();
+
                 // Add a confirmation so they don't accidentally tap it on mobile
                 if (confirm("Are you sure you want to leave the match?")) {
                     if (gameCode) {
                         socket.emit('leave_room', { room_id: gameCode });
                     }
-                    
+
                     gameCode = null;
-                    
+
                     // Kill all active loops/timers so they don't fire in the background
-                    if(typeof turnTimerInterval !== 'undefined') clearInterval(turnTimerInterval);
-                    if(typeof guessingTimerInterval !== 'undefined') clearInterval(guessingTimerInterval);
-                    if(typeof votingTimerInterval !== 'undefined') clearInterval(votingTimerInterval);
-                    if(typeof leaderboardTimerInterval !== 'undefined') clearInterval(leaderboardTimerInterval);
-                    
+                    if (typeof turnTimerInterval !== 'undefined') clearInterval(turnTimerInterval);
+                    if (typeof guessingTimerInterval !== 'undefined') clearInterval(guessingTimerInterval);
+                    if (typeof votingTimerInterval !== 'undefined') clearInterval(votingTimerInterval);
+                    if (typeof leaderboardTimerInterval !== 'undefined') clearInterval(leaderboardTimerInterval);
+
                     switchScreen('game-selection-screen');
                 }
             });
 
             // --- QR Code Toggle ---
-            $('#toggle-qr-btn').click(function(e) {
+            $('#toggle-qr-btn').click(function (e) {
                 e.preventDefault();
                 $('#qr-container').slideToggle(200);
             });
@@ -1413,7 +1652,7 @@
             $('#submit-votes').click(function (e) {
                 e.preventDefault();
                 let votes = {};
-                
+
                 // Collect votes from the new card structure
                 $('.voting-card').each(function () {
                     let id = $(this).data('id');
@@ -1422,13 +1661,13 @@
                         votes[id] = (val !== 'no');
                     }
                 });
-                
+
                 // Show a submitting state
                 $(this).prop('disabled', true).html(`
                     <span class="material-symbols-outlined animate-spin">sync</span>
                     SUBMITTING...
                 `);
-                
+
                 $('.voting-card input').prop('disabled', true);
                 socket.emit('cast_votes', { room_id: gameCode, votes: votes });
             });
@@ -1437,16 +1676,16 @@
                 $('#gameplay-top-bar').hide();
                 $('#letter-selection').hide();
                 $('#dynamic-inputs-area').hide();
-                
+
                 // Set the specific player's data
                 $('#waiting-player-name').text(player);
                 let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
                 $('#waiting-avatar-img').attr('src', avatarUrl);
-                
+
                 // Use the passed-in time instead of hardcoding 10!
-                let t = secondsLeft; 
+                let t = secondsLeft;
                 $('#waiting-timer-text').text(`${t}s`);
-                
+
                 clearInterval(turnTimerInterval);
                 turnTimerInterval = setInterval(() => {
                     t--;
@@ -1456,25 +1695,25 @@
                         clearInterval(turnTimerInterval);
                     }
                 }, 1000);
-                
+
                 $('#waiting-turn-screen').fadeIn();
             }
 
             function startTurnCountdown(seconds, maxTime = 10) {
                 let totalSeconds = maxTime; // Use maxTime for the SVG math
                 clearInterval(turnTimerInterval);
-                
+
                 function updateTimerVisuals(sec) {
                     // Pad with zero (e.g., "09", "08")
                     let displaySec = sec < 10 ? '0' + sec : sec;
                     $('#turn-timer-active').text(displaySec);
-                    
+
                     // Animate the SVG ring based on the TOTAL 10 seconds
                     let offset = 175 - (175 * (sec / totalSeconds));
                     $('#turn-timer-svg-circle').css('stroke-dashoffset', offset);
-                    
+
                     // Turn red at 3 seconds
-                    if(sec <= 3) {
+                    if (sec <= 3) {
                         $('#turn-timer-active').addClass('text-red-500').removeClass('text-white');
                         $('#turn-timer-svg-circle').addClass('text-red-500').removeClass('text-primary');
                     } else {
@@ -1482,10 +1721,10 @@
                         $('#turn-timer-svg-circle').removeClass('text-red-500').addClass('text-primary');
                     }
                 }
-                
+
                 // Set initial state using the remaining seconds
                 updateTimerVisuals(seconds);
-                
+
                 turnTimerInterval = setInterval(() => {
                     seconds--;
                     if (seconds >= 0) {
@@ -1497,26 +1736,26 @@
             }
 
             function renderVotingScreen(contested, secondsLeft = 30) {
-                hideOverlay(); 
-                $('#game-arena').hide(); 
+                hideOverlay();
+                $('#game-arena').hide();
                 $('#voting-container').empty();
-                
+
                 // --- Timer Logic (Formatted as 0:30) ---
                 let totalTime = 30;
                 let timeLeft = secondsLeft;
                 clearInterval(votingTimerInterval);
-                
+
                 function updateVotingTimerUI(sec) {
                     let displaySec = sec < 10 ? '0:0' + sec : '0:' + sec;
                     $('#voting-timer').text(displaySec);
-                    
-                    if(sec <= 5) {
+
+                    if (sec <= 5) {
                         $('#voting-timer').parent().addClass('border-red-500 bg-red-500/20 text-red-500').removeClass('border-primary/30 bg-primary/20 text-primary');
                     } else {
                         $('#voting-timer').parent().removeClass('border-red-500 bg-red-500/20 text-red-500').addClass('border-primary/30 bg-primary/20 text-primary');
                     }
                 }
-                
+
                 updateVotingTimerUI(timeLeft);
                 votingTimerInterval = setInterval(() => {
                     timeLeft--;
@@ -1534,17 +1773,17 @@
                 contested.forEach((item, i) => {
                     let isMine = item.player === myUsername;
                     if (!isMine) itemsToVoteOn++;
-                    
+
                     // Generate Initials Avatar (e.g., "Player" -> "PL")
                     let initials = item.player ? item.player.substring(0, 2).toUpperCase() : '??';
-                    
+
                     // Calculate vote percentages for the bar
                     let yesVotes = item.votes_yes || 0;
                     let noVotes = item.votes_no || 0;
                     let totalVotes = yesVotes + noVotes;
                     let yesPct = totalVotes === 0 ? 50 : (yesVotes / totalVotes) * 100;
                     let noPct = totalVotes === 0 ? 50 : (noVotes / totalVotes) * 100;
-                    
+
                     let html = `
                         <div class="voting-card group bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-primary/10 rounded-xl overflow-hidden shadow-sm hover:border-primary/40 transition-all" data-id="${item.id}">
                             <div class="p-4 space-y-4">
@@ -1572,12 +1811,12 @@
                                     <p id="tally-text-${item.id}" class="text-[10px] font-bold text-slate-500 min-w-fit">${yesVotes} / ${noVotes}</p>
                                 </div>
                                 
-                                ${isMine ? 
-                                    `<div class="bg-slate-800/50 border border-slate-700/30 rounded-lg py-3 px-4 mt-2 text-center text-slate-500 font-bold text-sm uppercase">
+                                ${isMine ?
+                            `<div class="bg-slate-800/50 border border-slate-700/30 rounded-lg py-3 px-4 mt-2 text-center text-slate-500 font-bold text-sm uppercase">
                                         Your Word (Others voting)
-                                    </div>` 
-                                    : 
-                                    `<div class="grid grid-cols-2 gap-3 pt-2">
+                                    </div>`
+                            :
+                            `<div class="grid grid-cols-2 gap-3 pt-2">
                                         <label class="cursor-pointer group/btn">
                                             <input type="radio" name="v_${i}" value="yes" checked class="peer sr-only">
                                             <div class="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-500/10 border-2 border-emerald-500/50 text-emerald-500 hover:bg-emerald-500 hover:text-white peer-checked:bg-emerald-500 peer-checked:text-white transition-all shadow-sm">
@@ -1593,7 +1832,7 @@
                                             </div>
                                         </label>
                                     </div>`
-                                }
+                        }
                             </div>
                         </div>`;
                     $('#voting-container').append(html);
@@ -1610,7 +1849,7 @@
                     $('#submit-votes').show().prop('disabled', false).html(originalBtnHtml);
                     $('#voting-status').hide();
                 }
-                
+
                 switchScreen('voting-screen');
             }
 
@@ -1625,22 +1864,22 @@
                 $('#gameplay-top-bar').hide();
                 $('#waiting-turn-screen').hide();
                 $('#dynamic-inputs-area').hide();
-                
+
                 $('#alpha-grid').empty();
-                
+
                 let safeDisabled = disabledIndices || [];
-                
+
                 gameAlphabet.split('').forEach(letter => {
                     let btn = $('<button type="button"></button>');
-                    
+
                     // YOUR ORIGINAL LOGIC: Get the absolute alphabet index (A=1, B=2, etc.)
-                    let absIdx = letter.charCodeAt(0) - 64; 
-                    
+                    let absIdx = letter.charCodeAt(0) - 64;
+
                     if (safeDisabled.includes(absIdx)) {
                         // DISABLED: Muted, recessed, with X mark overlay
                         btn.addClass('aspect-square rounded-full flex flex-col items-center justify-center relative overflow-hidden bg-slate-800/80 border-2 border-slate-700/50 shadow-[0_8px_0_#1e293b] opacity-60 cursor-not-allowed')
-                           .prop('disabled', true);
-                           
+                            .prop('disabled', true);
+
                         btn.html(`
                             <span class="text-3xl font-black text-slate-500 z-10">${letter}</span>
                             <div class="absolute inset-0 bg-black/20 rounded-full"></div>
@@ -1651,8 +1890,8 @@
                     } else {
                         // AVAILABLE: Vibrant gradient, 3D bottom shadow, lighting effect
                         btn.addClass('aspect-square rounded-full flex flex-col items-center justify-center relative overflow-hidden group bg-gradient-to-br from-primary via-[#ff7e33] to-[#ff9f66] shadow-[0_8px_0_#c2450b,0_15px_20px_rgba(236,91,19,0.4)] transition-all active:translate-y-2 active:shadow-[0_0_0_#c2450b,0_0_0_rgba(236,91,19,0)] hover:brightness-110 border-2 border-white/20')
-                           .click(() => socket.emit('letter_selected', { letter: letter, room_id: gameCode }));
-                           
+                            .click(() => socket.emit('letter_selected', { letter: letter, room_id: gameCode }));
+
                         btn.html(`
                             <span class="text-3xl font-black text-white z-10 drop-shadow-md group-hover:scale-110 transition-transform">${letter}</span>
                             <div class="absolute inset-0 bg-white/20 rounded-full blur-md -top-1/2 group-hover:top-0 transition-all duration-500"></div>
@@ -1660,13 +1899,13 @@
                     }
                     $('#alpha-grid').append(btn);
                 });
-                
+
                 $('#letter-selection').fadeIn();
             }
 
-            window.switchScreen = function(id) { 
-                $('.game-screen').hide(); 
-                $('#' + id).show(); 
+            window.switchScreen = function (id) {
+                $('.game-screen').hide();
+                $('#' + id).show();
             };
 
             function updateInputUI() {
@@ -1729,7 +1968,7 @@
             function showOverlay(msg) { $('#results-overlay').css('display', 'flex').hide().fadeIn().find('p').text(msg); }
             // --- TOAST NOTIFICATIONS ---
 
-            window.showToast = function(msg, isAlert = false) {
+            window.showToast = function (msg, isAlert = false) {
                 // Determine icon and colors based on if it's an alert (someone leaving) or normal (joining)
                 let icon = isAlert ? '<span class="material-symbols-outlined text-red-400">directions_run</span>' : '<span class="material-symbols-outlined text-green-400">waving_hand</span>';
                 let borderClass = isAlert ? 'border-red-500/50' : 'border-slate-700';
@@ -1740,14 +1979,14 @@
                         ${msg}
                     </div>
                 `);
-                
+
                 $('body').append(toast);
-                
+
                 // Animate In
                 setTimeout(() => {
                     toast.removeClass('-translate-y-10 opacity-0').addClass('translate-y-0 opacity-100');
                 }, 10);
-                
+
                 // Animate Out & Remove
                 setTimeout(() => {
                     toast.removeClass('translate-y-0 opacity-100').addClass('-translate-y-10 opacity-0');
