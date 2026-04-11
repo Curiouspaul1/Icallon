@@ -12,6 +12,7 @@ RUN apt update && apt install -y \
 
 RUN pip install gunicorn
 RUN pip install -r requirements.txt
+RUN pip install gevent-websocket
 
 RUN python -m nltk.downloader words
 
