@@ -47,12 +47,13 @@ class RoundPhase(str, Enum):
     VOTING = "voting"
     LEADERBOARD = "leaderboard"
     FINISHED = "finished"
+    GAME_OVER = "game_over"
 
 
 @dataclass
 class RoundState:
     phase: RoundPhase = RoundPhase.PICKING
-    letter: str | None = None
+    phase_id: float = 0.0
 
     answers: dict = field(default_factory=dict)
     contested_items: list = field(default_factory=list)
@@ -65,7 +66,8 @@ class RoundState:
     def start_timer(self, duration):
         self.timer_start = time.time()
         self.timer_duration = duration
-
+        self.phase_id = self.timer_start
+    
     def time_left(self):
         if not self.timer_start or not self.timer_duration:
             return None
@@ -105,7 +107,10 @@ def start_turn_timer(room_id):
     state.phase = RoundPhase.PICKING
     state.start_timer(10)
 
-    turn_timers[room_id] = gevent.spawn_later(10, handle_turn_timeout, room_id)
+    # Pass the unique phase_id to the background thread
+    turn_timers[room_id] = gevent.spawn_later(
+        10, handle_turn_timeout, room_id, state.phase_id
+    )
 
 
 def cancel_turn_timer(room_id):
@@ -114,8 +119,13 @@ def cancel_turn_timer(room_id):
         del turn_timers[room_id]
 
 
-def handle_turn_timeout(room_id):
+def handle_turn_timeout(room_id, expected_phase_id):
     try:
+        state = round_states.get(room_id)
+        # 🛡️ THE KILL SWITCH: If the ID changed, silently die.
+        if not state or state.phase_id != expected_phase_id:
+            return
+
         ioclient.emit(
             "info_toast",
             {"message": "⏳ Time's up! Skipping turn..."},
@@ -146,7 +156,7 @@ def start_answering_timer(room_id):
     state.start_timer(35)
 
     answering_timers[room_id] = gevent.spawn_later(
-        35, handle_answering_timeout, room_id
+        35, handle_answering_timeout, room_id, state.phase_id
     )
 
 
@@ -156,25 +166,25 @@ def cancel_answering_timer(room_id):
         del answering_timers[room_id]
 
 
-def handle_answering_timeout(room_id):
+def handle_answering_timeout(room_id, expected_phase_id):
     try:
+        state = round_states.get(room_id)
+        # 🛡️ THE KILL SWITCH: If the ID changed, silently die.
+        if not state or state.phase_id != expected_phase_id:
+            return
 
         if room_id in answering_timers:
             del answering_timers[room_id]
 
-        state = round_states.get(room_id)
+        print(f"⏰ Answering timeout for room {room_id}")
 
-        if state and state.phase == RoundPhase.ANSWERING:
+        ioclient.emit(
+            "info_toast",
+            {"message": "⏳ Time's up! Collecting answers..."},
+            to=room_id,
+        )
 
-            print(f"⏰ Answering timeout for room {room_id}")
-
-            ioclient.emit(
-                "info_toast",
-                {"message": "⏳ Time's up! Collecting answers..."},
-                to=room_id,
-            )
-
-            process_validation(room_id)
+        process_validation(room_id)
 
     except Exception as e:
         print(f"Error in answering timeout: {e}")
@@ -194,7 +204,9 @@ def start_voting_timer(room_id):
     state.phase = RoundPhase.VOTING
     state.start_timer(30)
 
-    voting_timers[room_id] = gevent.spawn_later(30, handle_voting_timeout, room_id)
+    voting_timers[room_id] = gevent.spawn_later(
+        30, handle_voting_timeout, room_id, state.phase_id
+    )
 
 
 def cancel_voting_timer(room_id):
@@ -203,24 +215,23 @@ def cancel_voting_timer(room_id):
         del voting_timers[room_id]
 
 
-def handle_voting_timeout(room_id):
-
+def handle_voting_timeout(room_id, expected_phase_id):
     try:
+        state = round_states.get(room_id)
+        # 🛡️ THE KILL SWITCH: If the ID changed, silently die.
+        if not state or state.phase_id != expected_phase_id:
+            return
 
         if room_id in voting_timers:
             del voting_timers[room_id]
 
-        state = round_states.get(room_id)
+        ioclient.emit(
+            "info_toast",
+            {"message": "⏳ Voting Time's Up!"},
+            to=room_id,
+        )
 
-        if state and state.phase == RoundPhase.VOTING:
-
-            ioclient.emit(
-                "info_toast",
-                {"message": "⏳ Voting Time's Up!"},
-                to=room_id,
-            )
-
-            finalize_scores(room_id)
+        finalize_scores(room_id)
 
     except Exception as e:
         print(f"Error in voting timeout: {e}")
@@ -363,7 +374,7 @@ def join(data):
     if is_in_session(room):
         emit("error", {"message": "Game started!"})
         return
-    
+
     if len(players) >= 8:
         emit("error", {"message": "Room is full (Max 8 players)!"})
         return
@@ -727,6 +738,89 @@ def finalize_scores(room_id):
 
     ioclient.emit("round_result", all_scores, room=room_id)
 
-    gevent.sleep(10)
+    # REPLACED: gevent.sleep(10) with a non-blocking background task
+    gevent.spawn_later(10, trigger_next_round, room_id, state.phase_id)
 
-    next_player_turn({"room_id": room_id})
+
+# NEW HELPER FUNCTION
+def trigger_next_round(room_id, expected_phase_id):
+    state = round_states.get(room_id)
+    if not state or state.phase_id != expected_phase_id:
+        return
+
+    config = get_room_config(room_id)
+    used_letters = get_used_letters(room_id)
+
+    # --- NEW: EXHAUSTION CHECK ---
+    # If the number of used letters equals or exceeds the total allowed letters...
+    if len(used_letters) >= len(config["allowed_letters"]):
+        state.phase = RoundPhase.GAME_OVER
+        state.phase_id = time.time()  # New Epoch ID for the self-destruct timer
+
+        ioclient.emit("game_over", {"scores": state.scores}, to=room_id)
+
+        # Start the 30-second self-destruct sequence
+        gevent.spawn_later(30, auto_destroy_room, room_id, state.phase_id)
+    else:
+        # Game continues!
+        next_player_turn({"room_id": room_id})
+
+
+def auto_destroy_room(room_id, expected_phase_id):
+    state = round_states.get(room_id)
+    # Check if the host already restarted the game or ended it manually
+    if not state or state.phase_id != expected_phase_id:
+        return
+
+    ioclient.emit(
+        "room_destroyed", {"message": "Room closed due to inactivity."}, to=room_id
+    )
+    # Cleanup memory
+    if room_id in round_states:
+        del round_states[room_id]
+
+
+@ioclient.on("force_end_game")
+def force_end_game(data):
+    room_id = data["room_id"]
+    username = get_user_from_sid(request.sid)
+    players = get_players(room_id)
+
+    # Only the host (player index 0) can end the game
+    if players and players[0] == username:
+        ioclient.emit(
+            "room_destroyed", {"message": "Host ended the match."}, to=room_id
+        )
+        if room_id in round_states:
+            del round_states[room_id]
+
+
+@ioclient.on("restart_game")
+def restart_game(data):
+    room_id = data["room_id"]
+    username = get_user_from_sid(request.sid)
+    players = get_players(room_id)
+
+    if players and players[0] == username:
+        # 1. Kill the self-destruct timer by changing the phase_id
+        state = get_state(room_id)
+        state.phase_id = time.time()
+
+        # 2. Reset the backend game data
+        config = get_room_config(room_id)
+        # NOTE: You will need to add a function in utils.py called `clear_used_letters(room_id)`
+        # or manually reset the letters crossed off in your JSON here!
+
+        # 3. Tell everyone to jump back to the picking phase
+        ioclient.emit(
+            "game_started",
+            {
+                "players": players,
+                "categories": config["categories"],
+                "allowed_letters": config["allowed_letters"],
+            },
+            to=room_id,
+        )
+
+        # 4. Start the game loop
+        next_player_turn({"room_id": room_id})
