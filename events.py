@@ -33,6 +33,7 @@ from utils import (
     get_user_from_sid,
     verify_and_register_user,
     find_available_public_room,
+    clear_used_letters
 )
 
 # =========================================================
@@ -59,6 +60,7 @@ class RoundState:
     contested_items: list = field(default_factory=list)
     votes_cast_count: int = 0
     scores: dict = field(default_factory=dict)
+    letter: str | None = None
 
     timer_start: float | None = None
     timer_duration: int | None = None
@@ -251,7 +253,13 @@ def connect(auth):
     username = auth["username"]
     token = auth["token"]
 
-    if not verify_and_register_user(username, token):
+    auth_result = verify_and_register_user(username, token)
+    if auth_result is None:
+        # execute_action swallowed an exception (file I/O hiccup, etc.) —
+        # don't silently treat that the same as "username taken"
+        print(f"⚠️ Auth check errored for {username}; rejecting connection")
+        return False
+    if not auth_result:
         return False
 
     store_sid(username, request.sid)
@@ -343,11 +351,21 @@ def connect(auth):
 
 @ioclient.on("disconnect")
 def disconnect(reason):
-
     player = get_user_from_sid(request.sid)
 
     if player:
-        remove_sid_if_matches(player, request.sid)
+        was_current_connection = remove_sid_if_matches(player, request.sid)
+        if was_current_connection:
+            room_id = get_player_room(player)
+            if room_id:
+                # Don't remove them from the room's player list — they should
+                # be able to reconnect and resume their turn. Just tell
+                # everyone else so the UI can show a "waiting" state.
+                ioclient.emit(
+                    "player_disconnected",
+                    {"player": player, "players": get_players(room_id)},
+                    to=room_id,
+                )
 
 
 # =========================================================
@@ -568,6 +586,8 @@ def letter_selected(data):
 def handle_player_answer(data):
 
     player = get_user_from_sid(request.sid)
+    if not player:
+        return
     room_id = data["room_id"]
 
     state = round_states.get(room_id)
@@ -672,6 +692,8 @@ def handle_votes(data):
     state.votes_cast_count += 1
 
     players = get_players(room_id)
+    if not players:
+        return
 
     if state.votes_cast_count >= len(players):
         finalize_scores(room_id)
@@ -808,8 +830,7 @@ def restart_game(data):
 
         # 2. Reset the backend game data
         config = get_room_config(room_id)
-        # NOTE: You will need to add a function in utils.py called `clear_used_letters(room_id)`
-        # or manually reset the letters crossed off in your JSON here!
+        clear_used_letters(room_id)
 
         # 3. Tell everyone to jump back to the picking phase
         ioclient.emit(

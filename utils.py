@@ -7,13 +7,11 @@ from dataclasses import dataclass
 
 from geopy import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-from nltk.corpus import words
-from names_dataset import NameDataset
+from nltk.corpus import words, names as nltk_names
 
 from read_writer import ReadWriteLock
 
 # Initialize datasets
-nd = NameDataset()
 try:
     word_list = set(words.words())
     print(f"✅ Loaded {len(word_list)} English words.")
@@ -23,8 +21,10 @@ except LookupError:
     )
     word_list = set()
 
+name_set = nltk_names.words()
+
 geolocator = Nominatim(user_agent="Icallon")
-lock = ReadWriteLock()
+_locks: dict[str, ReadWriteLock] = {}
 animal_set = set()
 try:
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -48,13 +48,18 @@ class Resp:
     routine_resp: Optional[any] = None
 
 
-# --- HELPER DECORATORS ---
+# --- HELPER FUNCS AND DECORATORS ---
 
+def _get_lock(filename: str) -> ReadWriteLock:
+    if filename not in _locks:
+        _locks[filename] = ReadWriteLock()
+    return _locks[filename]
 
 def execute_action(filename):
     def wrapper(subroutine):
         def wrap(*args, **kwargs):
-            lock.acquire_write()
+            file_lock = _get_lock(filename)
+            file_lock.acquire_write()
             try:
                 # Create file if missing
                 if not os.path.exists(filename):
@@ -78,15 +83,41 @@ def execute_action(filename):
             except Exception as e:
                 print(f"Error in {filename}: {e}")
             finally:
-                lock.release_write()
+                file_lock.release_write()
 
         return wrap
 
     return wrapper
 
 
+def execute_read(filename):
+    def wrapper(subroutine):
+        def wrap(*args, **kwargs):
+            file_lock = _get_lock(filename)
+            file_lock.acquire_read()
+            try:
+                if not os.path.exists(filename):
+                    obj = {}
+                else:
+                    with open(filename, "r") as _file:
+                        try:
+                            obj: dict = json.load(_file)
+                        except json.JSONDecodeError:
+                            obj = {}
+                resp: Resp = subroutine(obj, *args, **kwargs)
+                if resp:
+                    return resp.routine_resp
+            except Exception as e:
+                print(f"Error in {filename}: {e}")
+            finally:
+                file_lock.release_read()
+        return wrap
+    return wrapper
+
+
 def getFile(filename: str) -> dict:
-    lock.acquire_read()
+    file_lock = _get_lock(filename)
+    file_lock.acquire_read()
     try:
         if not os.path.exists(filename):
             return {}
@@ -95,12 +126,10 @@ def getFile(filename: str) -> dict:
     except Exception:
         return {}
     finally:
-        lock.release_read()
+        file_lock.release_read()
 
 
 # --- TOKEN & AUTH UTILS (NEW) ---
-
-
 @execute_action(filename="player_tokens.json")
 def verify_and_register_user(tokens, username, incoming_token):
     """
@@ -121,8 +150,6 @@ def verify_and_register_user(tokens, username, incoming_token):
 
 
 # --- SOCKET & ROOM UTILS ---
-
-
 def genRoomId():
     chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ0123456789"
     return "".join(random.choice(chars) for x in range(6))
@@ -132,7 +159,7 @@ def letter_to_idx(letter: str) -> int:
     return ord(letter.lower()) - 96
 
 
-@execute_action(filename="rooms.json")
+@execute_read(filename="rooms.json")
 def get_room_config(rooms, room_id):
     if room_id in rooms:
         return Resp(
@@ -186,7 +213,7 @@ def indexRoom(
 
 
 # --- NEW FUNCTION ---
-@execute_action(filename="rooms.json")
+@execute_read(filename="rooms.json")
 def find_available_public_room(rooms, max_players=8):
     """Finds a public room that hasn't started and isn't full."""
     for room_id, room_data in rooms.items():
@@ -205,7 +232,7 @@ def set_turn_player(rooms, room_id, player):
         return Resp(file_json=rooms)
 
 
-@execute_action(filename="rooms.json")
+@execute_read(filename="rooms.json")
 def get_turn_player(rooms, room_id):
     if room_id in rooms:
         return Resp(routine_resp=rooms[room_id].get("turn_player"))
@@ -218,7 +245,7 @@ def set_room_mode(rooms, room_id):
         return Resp(file_json=rooms)
 
 
-@execute_action(filename="rooms.json")
+@execute_read(filename="rooms.json")
 def get_players(rooms, room_id):
     if room_id in rooms:
         return Resp(routine_resp=rooms[room_id]["players"])
@@ -245,7 +272,7 @@ def map_player_to_room(sess_to_room, player: str, room_id: str) -> None:
     return Resp(file_json=sess_to_room)
 
 
-@execute_action(filename="player_to_rooms.json")
+@execute_read(filename="player_to_rooms.json")
 def get_player_room(sess_to_room, player: str) -> [str | None]:
     if player in sess_to_room:
         return Resp(routine_resp=sess_to_room[player])
@@ -322,34 +349,65 @@ def get_used_letters(room_id: str) -> [str]:
 
 
 def clean_rooms():
-    """Removes stale rooms (> 5 mins inactivity)"""
+    """Removes stale rooms (> 5 mins inactivity) and any player_to_rooms
+    mappings that pointed at them."""
     print("Cron job active: Cleaning the rooms")
-    lock.acquire_write()
+
+    rooms_lock = _get_lock("rooms.json")
+    rooms_lock.acquire_write()
+    stale_room_ids = set()
     try:
         tmp_rooms = {}
         if os.path.exists("rooms.json"):
             with open("rooms.json") as fp:
-                rooms = json.load(fp)
-                for room in rooms:
-                    diff = time.time() - rooms[room]["last_interaction"]
-                    if diff < 300:
-                        tmp_rooms[room] = rooms[room]
+                try:
+                    rooms = json.load(fp)
+                except json.JSONDecodeError:
+                    rooms = {}
+            for room_id, room in rooms.items():
+                diff = time.time() - room.get("last_interaction", 0)
+                if diff < 300:
+                    tmp_rooms[room_id] = room
+                else:
+                    stale_room_ids.add(room_id)
             with open("rooms.json", "w") as fp:
                 json.dump(tmp_rooms, fp)
     finally:
-        lock.release_write()
+        rooms_lock.release_write()
 
+    if not stale_room_ids:
+        return
+
+    map_lock = _get_lock("player_to_rooms.json")
+    map_lock.acquire_write()
+    try:
+        if os.path.exists("player_to_rooms.json"):
+            with open("player_to_rooms.json") as fp:
+                try:
+                    sess_to_room = json.load(fp)
+                except json.JSONDecodeError:
+                    sess_to_room = {}
+            cleaned = {
+                p: r for p, r in sess_to_room.items() if r not in stale_room_ids
+            }
+            with open("player_to_rooms.json", "w") as fp:
+                json.dump(cleaned, fp)
+    finally:
+        map_lock.release_write()
+
+
+@execute_action(filename="rooms.json")
+def clear_used_letters(rooms, room_id):
+    if room_id in rooms:
+        rooms[room_id]["letters"] = []
+        rooms[room_id]["last_interaction"] = time.time()
+        return Resp(file_json=rooms)
 
 # --- VALIDATION LOGIC ---
 
 
 def is_name(name):
-    try:
-        name = name.strip().title()
-        result = nd.search(name)
-        return bool(result.get("first_name") or result.get("last_name"))
-    except Exception:
-        return False
+    return name.strip().lower() in name_set
 
 
 def is_valid_word(word):

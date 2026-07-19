@@ -26,7 +26,7 @@ load_dotenv()
 
 # init app
 app = Flask(__name__)
-app.config['secret_key'] = os.getenv(
+app.config['SECRET_KEY'] = os.getenv(
     'APP_SECRET',
     os.urandom(24)
 )
