@@ -33,7 +33,9 @@ from utils import (
     get_user_from_sid,
     verify_and_register_user,
     find_available_public_room,
-    clear_used_letters
+    clear_used_letters,
+    delete_room,
+    unmap_player_from_room,
 )
 
 # =========================================================
@@ -86,6 +88,7 @@ round_states: dict[str, RoundState] = {}
 turn_timers = {}
 voting_timers = {}
 answering_timers = {}
+room_destroy_timers = {}
 
 # =========================================================
 # TIMER HELPERS
@@ -94,6 +97,109 @@ answering_timers = {}
 
 def get_state(room_id):
     return round_states.setdefault(room_id, RoundState())
+
+
+def _connected_count(room_id):
+    """How many of this room's players currently have a live socket."""
+    players = get_players(room_id) or []
+    return sum(1 for p in players if get_sid(p))
+
+
+def _leave_previous_room(username, new_room_id=None):
+    """Detach a player from whatever room they were last mapped to, before
+    they join or create a different one. Without this, creating/joining a
+    new room leaves the player still subscribed to the old room's
+    Socket.IO broadcast group AND still listed in its roster — so the old
+    room never registers as empty, its timers never get torn down, and
+    its stale events keep arriving on this client even after they've
+    moved on to a different room."""
+    old_room_id = get_player_room(username)
+    if not old_room_id or old_room_id == new_room_id:
+        return
+
+    leave_room(old_room_id)
+    removeFromRoom(old_room_id, username)
+
+    remaining = get_players(old_room_id)
+    if remaining:
+        emit("player_left", remaining, to=old_room_id)
+
+    if _connected_count(old_room_id) == 0:
+        schedule_room_destroy(old_room_id)
+
+
+def _teardown_room(room_id):
+    """Fully removes a room: gameplay timers, in-memory state, and the
+    persisted rooms.json / player_to_rooms.json entries."""
+    cancel_turn_timer(room_id)
+    cancel_answering_timer(room_id)
+    cancel_voting_timer(room_id)
+
+    timer = room_destroy_timers.get(room_id)
+    if timer:
+        # Careful: this can be called FROM the destroy-timer's own
+        # greenlet (destroy_empty_room -> _teardown_room). Killing the
+        # greenlet that's currently executing us would abort this very
+        # function before it finishes. Only kill if it's some other
+        # (still-pending) greenlet, e.g. when called from
+        # force_end_game/auto_destroy_room while a destroy was also queued.
+        if timer is not gevent.getcurrent():
+            gevent.kill(timer)
+        del room_destroy_timers[room_id]
+
+    for player in (get_players(room_id) or []):
+        unmap_player_from_room(player)
+
+    if room_id in round_states:
+        del round_states[room_id]
+
+    delete_room(room_id)
+    print(f"🗑️ Room {room_id} torn down")
+
+
+def schedule_room_destroy(room_id):
+    """Room just hit 0 connected players. Give it 30s to come back to life
+    before wiping it — also immediately silences any in-flight gameplay
+    timers so they don't keep cycling against an empty room."""
+    cancel_turn_timer(room_id)
+    cancel_answering_timer(room_id)
+    cancel_voting_timer(room_id)
+
+    if room_id in room_destroy_timers:
+        gevent.kill(room_destroy_timers[room_id])
+
+    state = get_state(room_id)
+    state.phase_id = time.time()  # invalidate any timers already in flight
+
+    room_destroy_timers[room_id] = gevent.spawn_later(
+        30, destroy_empty_room, room_id, state.phase_id
+    )
+    print(f"🕒 Room {room_id} is empty — destroying in 30s if nobody returns")
+
+
+def cancel_room_destroy(room_id):
+    if room_id in room_destroy_timers:
+        gevent.kill(room_destroy_timers[room_id])
+        del room_destroy_timers[room_id]
+        print(f"✅ Room {room_id} un-emptied — destroy cancelled")
+
+
+def destroy_empty_room(room_id, expected_phase_id):
+    try:
+        state = round_states.get(room_id)
+        if state and state.phase_id != expected_phase_id:
+            return  # something happened in this room since we scheduled this
+        if _connected_count(room_id) > 0:
+            return  # someone came back after all
+
+        ioclient.emit(
+            "room_destroyed",
+            {"message": "Room closed — everyone left."},
+            to=room_id,
+        )
+        _teardown_room(room_id)
+    except Exception as e:
+        print(f"Error destroying empty room {room_id}: {e}")
 
 
 # ---------------------------------------------------------
@@ -126,6 +232,10 @@ def handle_turn_timeout(room_id, expected_phase_id):
         state = round_states.get(room_id)
         # 🛡️ THE KILL SWITCH: If the ID changed, silently die.
         if not state or state.phase_id != expected_phase_id:
+            return
+
+        if _connected_count(room_id) == 0:
+            schedule_room_destroy(room_id)
             return
 
         ioclient.emit(
@@ -175,6 +285,10 @@ def handle_answering_timeout(room_id, expected_phase_id):
         if not state or state.phase_id != expected_phase_id:
             return
 
+        if _connected_count(room_id) == 0:
+            schedule_room_destroy(room_id)
+            return
+
         if room_id in answering_timers:
             del answering_timers[room_id]
 
@@ -222,6 +336,10 @@ def handle_voting_timeout(room_id, expected_phase_id):
         state = round_states.get(room_id)
         # 🛡️ THE KILL SWITCH: If the ID changed, silently die.
         if not state or state.phase_id != expected_phase_id:
+            return
+
+        if _connected_count(room_id) == 0:
+            schedule_room_destroy(room_id)
             return
 
         if room_id in voting_timers:
@@ -283,6 +401,13 @@ def connect(auth):
         return True
 
     join_room(room_id)
+    cancel_room_destroy(room_id)
+
+    ioclient.emit(
+        "player_reconnected",
+        {"player": username, "players": players},
+        to=room_id,
+    )
 
     config = get_room_config(room_id)
     game_started = is_in_session(room_id)
@@ -351,6 +476,7 @@ def connect(auth):
 
 @ioclient.on("disconnect")
 def disconnect(reason):
+
     player = get_user_from_sid(request.sid)
 
     if player:
@@ -358,14 +484,15 @@ def disconnect(reason):
         if was_current_connection:
             room_id = get_player_room(player)
             if room_id:
-                # Don't remove them from the room's player list — they should
-                # be able to reconnect and resume their turn. Just tell
-                # everyone else so the UI can show a "waiting" state.
-                ioclient.emit(
-                    "player_disconnected",
-                    {"player": player, "players": get_players(room_id)},
-                    to=room_id,
-                )
+                if _connected_count(room_id) > 0:
+                    # Someone's still here — let them know, don't tear anything down.
+                    ioclient.emit(
+                        "player_disconnected",
+                        {"player": player, "players": get_players(room_id)},
+                        to=room_id,
+                    )
+                else:
+                    schedule_room_destroy(room_id)
 
 
 # =========================================================
@@ -397,7 +524,9 @@ def join(data):
         emit("error", {"message": "Room is full (Max 8 players)!"})
         return
 
+    _leave_previous_room(username, room)
     join_room(room)
+    cancel_room_destroy(room)
 
     addToRoom(room, username)
     map_player_to_room(username, room)
@@ -421,7 +550,9 @@ def handle_join_public():
         indexRoom(room_id, is_public=True)
 
     # 3. Add the player to the room
+    _leave_previous_room(username, room_id)
     join_room(room_id)
+    cancel_room_destroy(room_id)
     addToRoom(room_id, username)
     map_player_to_room(username, room_id)
 
@@ -455,6 +586,7 @@ def new_room(data=None):
 
     indexRoom(roomID, categories=cats, allowed_letters=alphabet)
 
+    _leave_previous_room(username, roomID)
     join_room(roomID)
 
     addToRoom(roomID, username)
@@ -544,6 +676,10 @@ def handle_leave_room(data):
         if remaining_players:
             emit("player_left", remaining_players, to=room_id)
 
+        # 3b. If that was the last connected player, start the teardown clock.
+        if _connected_count(room_id) == 0:
+            schedule_room_destroy(room_id)
+
         # 4. Confirm success to the person who left
         emit("left_room_success", to=request.sid)
 
@@ -586,8 +722,6 @@ def letter_selected(data):
 def handle_player_answer(data):
 
     player = get_user_from_sid(request.sid)
-    if not player:
-        return
     room_id = data["room_id"]
 
     state = round_states.get(room_id)
@@ -692,8 +826,6 @@ def handle_votes(data):
     state.votes_cast_count += 1
 
     players = get_players(room_id)
-    if not players:
-        return
 
     if state.votes_cast_count >= len(players):
         finalize_scores(room_id)
@@ -797,9 +929,7 @@ def auto_destroy_room(room_id, expected_phase_id):
     ioclient.emit(
         "room_destroyed", {"message": "Room closed due to inactivity."}, to=room_id
     )
-    # Cleanup memory
-    if room_id in round_states:
-        del round_states[room_id]
+    _teardown_room(room_id)
 
 
 @ioclient.on("force_end_game")
@@ -813,8 +943,7 @@ def force_end_game(data):
         ioclient.emit(
             "room_destroyed", {"message": "Host ended the match."}, to=room_id
         )
-        if room_id in round_states:
-            del round_states[room_id]
+        _teardown_room(room_id)
 
 
 @ioclient.on("restart_game")

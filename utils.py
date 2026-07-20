@@ -21,7 +21,7 @@ except LookupError:
     )
     word_list = set()
 
-name_set = nltk_names.words()
+name_set = {n.strip().lower() for n in nltk_names.words()}
 
 geolocator = Nominatim(user_agent="Icallon")
 _locks: dict[str, ReadWriteLock] = {}
@@ -230,6 +230,20 @@ def set_turn_player(rooms, room_id, player):
     if room_id in rooms:
         rooms[room_id]["turn_player"] = player
         return Resp(file_json=rooms)
+
+
+@execute_action(filename="rooms.json")
+def delete_room(rooms, room_id):
+    if room_id in rooms:
+        del rooms[room_id]
+        return Resp(file_json=rooms)
+
+
+@execute_action(filename="player_to_rooms.json")
+def unmap_player_from_room(sess_to_room, player):
+    if player in sess_to_room:
+        del sess_to_room[player]
+        return Resp(file_json=sess_to_room)
 
 
 @execute_read(filename="rooms.json")
@@ -478,6 +492,3 @@ def commit_round_scores(rooms, room_id, final_scores):
         room["round_answers"] = {}
         room["last_interaction"] = time.time()
         return Resp(file_json=rooms, routine_resp=room["player_to_score"])
-
-
-print(is_animal("hand"))
