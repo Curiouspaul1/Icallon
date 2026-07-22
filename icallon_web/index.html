@@ -803,6 +803,36 @@
             // --- Track players to detect who joins/leaves ---
             let currentPlayers = [];
 
+            // --- Draft persistence: a mid-network-blip reconnect fires
+            // restore_session, which used to hard-reset activeInputs and
+            // wipe anything already typed. These keep a live copy in
+            // localStorage so restore_session can put it back instead.
+            function draftKey(roomId, letter) {
+                return `icallon_draft:${roomId}:${letter}`;
+            }
+            function saveDraft() {
+                if (!gameCode || !currentLetter) return;
+                try {
+                    localStorage.setItem(
+                        draftKey(gameCode, currentLetter),
+                        JSON.stringify({ activeInputs, currentCatIndex })
+                    );
+                } catch (e) { /* localStorage unavailable — draft just won't persist */ }
+            }
+            function loadDraft(roomId, letter) {
+                try {
+                    let raw = localStorage.getItem(draftKey(roomId, letter));
+                    return raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    return null;
+                }
+            }
+            function clearDraft(roomId, letter) {
+                try {
+                    localStorage.removeItem(draftKey(roomId, letter));
+                } catch (e) { /* no-op */ }
+            }
+
             // --- Helper: Render Sleek Avatars ---
             // function renderLobbyAvatars(players) {
             //     $('#lobby-avatars').empty(); 
@@ -1369,6 +1399,7 @@
 
                     currentCatIndex = 0;
                     activeInputs = {};
+                    clearDraft(gameCode, letter);
                     updateInputUI();
                     $('#dynamic-inputs-area').fadeIn();
 
@@ -1494,8 +1525,23 @@
                             $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${currentLetter}</span>`);
                             $('#guessing-letter-display').text(`Letter: ${currentLetter}`);
 
-                            currentCatIndex = 0;
-                            activeInputs = {};
+                            // Restore whatever was already typed before this
+                            // reconnect, instead of wiping it. A dropped
+                            // websocket (brief network blip, tab backgrounded,
+                            // etc.) re-runs this same restore path a full
+                            // page load takes, so without this, any mid-answer
+                            // reconnect looked exactly like losing your progress.
+                            let draft = loadDraft(gameCode, currentLetter);
+                            if (draft) {
+                                activeInputs = draft.activeInputs || {};
+                                currentCatIndex = Math.min(
+                                    draft.currentCatIndex || 0,
+                                    Math.max(0, activeCategories.length - 1)
+                                );
+                            } else {
+                                currentCatIndex = 0;
+                                activeInputs = {};
+                            }
                             updateInputUI();
                             $('#dynamic-inputs-area').fadeIn();
 
@@ -1929,6 +1975,7 @@
                 e.preventDefault();
                 let catName = activeCategories[currentCatIndex];
                 activeInputs[catName] = $('#current-input').val();
+                saveDraft();
                 if (currentCatIndex < activeCategories.length - 1) {
                     currentCatIndex++;
                     updateInputUI();
@@ -1941,10 +1988,21 @@
                 e.preventDefault();
                 let catName = activeCategories[currentCatIndex];
                 activeInputs[catName] = $('#current-input').val();
+                saveDraft();
                 if (currentCatIndex > 0) {
                     currentCatIndex--;
                     updateInputUI();
                 }
+            });
+
+            // Persist the field currently being typed too, not just fields
+            // already navigated away from — so even an uncommitted
+            // in-progress keystroke survives a reconnect.
+            $('#current-input').on('input', function () {
+                if (!activeCategories.length) return;
+                let catName = activeCategories[currentCatIndex];
+                activeInputs[catName] = $(this).val();
+                saveDraft();
             });
 
             function sendPlayerAnswers(customMsg) {
@@ -1957,6 +2015,7 @@
                 $('#dynamic-inputs-area').hide();
                 let msg = customMsg || "Waiting for others...";
                 showOverlay(msg);
+                clearDraft(gameCode, currentLetter);
                 socket.emit('player_answer', { answers: activeInputs, room_id: gameCode, letter: currentLetter });
             }
 

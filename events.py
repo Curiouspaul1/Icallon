@@ -63,6 +63,7 @@ class RoundState:
     votes_cast_count: int = 0
     scores: dict = field(default_factory=dict)
     letter: str | None = None
+    validity_reports: dict = field(default_factory=dict)
 
     timer_start: float | None = None
     timer_duration: int | None = None
@@ -734,9 +735,7 @@ def handle_player_answer(data):
     if player == current_turn_player:
         ioclient.emit("force_submit", {}, to=room_id)
 
-    players = get_players(room_id)
-
-    if len(state.answers) >= len(players):
+    if len(state.answers) >= _connected_count(room_id):
         process_validation(room_id)
 
 
@@ -759,10 +758,33 @@ def process_validation(room_id):
     letter = state.letter
     contested = []
 
-    for player, p_answers in state.answers.items():
+    # Validate every player's answers concurrently instead of one at a
+    # time. A "Place" answer triggers a real network geocode call
+    # (up to ~2s), and doing that sequentially per player is what made
+    # this screen slow with more than 1-2 players.
+    jobs = {
+        player: gevent.spawn(get_answer_validity, p_answers, letter)
+        for player, p_answers in state.answers.items()
+    }
+    gevent.joinall(list(jobs.values()), timeout=5)
 
-        report = get_answer_validity(p_answers, letter)
+    reports = {}
+    for player, job in jobs.items():
+        # If a job didn't finish in time (e.g. geocoder hung), fall back
+        # to treating that player's answers as needing a vote rather than
+        # blocking everyone else or crashing.
+        if job.successful():
+            reports[player] = job.value
+        else:
+            reports[player] = {
+                cat: {"word": word.strip(), "status": "needs_vote"}
+                for cat, word in state.answers[player].items()
+                if word.strip()
+            }
 
+    state.validity_reports = reports
+
+    for player, report in reports.items():
         for category, details in report.items():
 
             if details["status"] == "needs_vote":
@@ -825,9 +847,7 @@ def handle_votes(data):
 
     state.votes_cast_count += 1
 
-    players = get_players(room_id)
-
-    if state.votes_cast_count >= len(players):
+    if state.votes_cast_count >= _connected_count(room_id):
         finalize_scores(room_id)
 
 
@@ -856,7 +876,12 @@ def finalize_scores(room_id):
     for player, answers in state.answers.items():
 
         points = 0
-        validity = get_answer_validity(answers, letter)
+        # Reuse what process_validation already computed instead of
+        # re-running (and re-geocoding) everything from scratch. Only
+        # falls back to a fresh computation if something's missing.
+        validity = state.validity_reports.get(player) or get_answer_validity(
+            answers, letter
+        )
 
         for cat, details in validity.items():
 

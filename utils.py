@@ -433,13 +433,21 @@ def is_animal(word):
     return word.lower().strip() in animal_set
 
 
+_place_cache: dict[str, bool] = {}
+
+
 def is_place(name):
+    key = name.strip().lower()
+    if key in _place_cache:
+        return _place_cache[key]
     try:
-        return geolocator.geocode(name, timeout=2) is not None
+        result = geolocator.geocode(name, timeout=2) is not None
     except (GeocoderTimedOut, GeocoderUnavailable):
-        return False
+        result = False
     except Exception:
-        return False
+        result = False
+    _place_cache[key] = result
+    return result
 
 
 def get_answer_validity(answers, letter):
