@@ -772,6 +772,28 @@
             let currentLetter;
             let isHost = false;
             let isJoiningViaLink = false;
+            let hasConnectedOnce = false;
+
+            // Single source of truth for the lobby footer: host sees START,
+            // everyone else sees "Waiting for host...".
+            function refreshLobbyControls(playerCount) {
+                if (isHost) {
+                    $('#start-game-button').show().prop('disabled', playerCount < 2);
+                    $('#waiting-msg').hide();
+                } else {
+                    $('#start-game-button').hide();
+                    $('#waiting-msg').show();
+                }
+            }
+
+            // Mobile browsers kill the socket when the tab is backgrounded
+            // (e.g. switching apps to share the room code). Reconnect as soon
+            // as the player comes back instead of waiting on a backoff timer.
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible' && socket && hasConnectedOnce && !socket.connected) {
+                    socket.connect();
+                }
+            });
             let roundTimer;
             let turnTimerInterval;
             let guessingTimerInterval;
@@ -1115,7 +1137,7 @@
                         // --- NEW: COLD START CONFIG ---
                         timeout: 30000, // Give each attempt 30 seconds before declaring it failed
                         reconnection: true, // Allow it to retry automatically
-                        reconnectionAttempts: 4, // Try up to 4 times (total of ~2 mins)
+                        reconnectionAttempts: Infinity, // First connect is capped at 4 below; after that, never give up on a live session
                         reconnectionDelay: 2000 // Wait 2 seconds between attempts
                     }
                 );
@@ -1123,6 +1145,7 @@
                 socket.on('connect', () => {
                     console.log("📡 Connected to server! SID:", socket.id);
                     connectionAttempts = 0;
+                    hasConnectedOnce = true;
                     localStorage.setItem('username', user);
 
                     if (inviteCode) {
@@ -1135,7 +1158,31 @@
                     }
                 });
 
+                socket.on('disconnect', (reason) => {
+                    if (reason === 'io client disconnect') return; // we closed it on purpose
+                    showOverlay("Connection lost. Reconnecting...");
+                    // socket.io does not auto-reconnect after a server-side kick
+                    if (reason === 'io server disconnect') socket.connect();
+                });
+
                 socket.on('connect_error', (err) => {
+                    // Server explicitly refused us: retrying won't help.
+                    if (err && err.message === 'username_taken') {
+                        socket.disconnect();
+                        hideOverlay();
+                        alert("That name is already in use. Please pick a different one.");
+                        $('#submit-username').prop('disabled', false).html('Ready <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>');
+                        switchScreen('username-screen');
+                        return;
+                    }
+
+                    // We were connected before and the link dropped: keep
+                    // retrying quietly, the player is mid-lobby or mid-game.
+                    if (hasConnectedOnce) {
+                        console.log("Reconnect attempt failed. Retrying...");
+                        return;
+                    }
+
                     connectionAttempts++;
                     console.log(`Connection attempt ${connectionAttempts} failed. Retrying...`);
 
@@ -1161,14 +1208,15 @@
                     switchScreen('game-selection-screen');
                 });
 
-                socket.on('connect_error', (err) => {
-                    alert("Connection Failed. Refresh and try again.");
-                    $('#submit-username').prop('disabled', false).html('Ready <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>');
-                    if ($('#game-selection-screen').is(':hidden')) switchScreen('username-screen');
-                    socket.disconnect();
-                });
+                // socket.on('connect_error', (err) => {
+                //     alert("Connection Failed. Refresh and try again.");
+                //     $('#submit-username').prop('disabled', false).html('Ready <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>');
+                //     if ($('#game-selection-screen').is(':hidden')) switchScreen('username-screen');
+                //     socket.disconnect();
+                // });
 
                 socket.on('error', (data) => {
+                    isJoiningViaLink = false;
                     hideOverlay();
                     alert(data.message);
                     switchScreen('game-selection-screen');
@@ -1184,7 +1232,28 @@
                     let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                     $('#room-qr-code').attr('src', qrUrl);
                     $('#qr-container').fadeIn();
+                    currentPlayers = [user];
+                    renderLobbyAvatars(currentPlayers);
+                    refreshLobbyControls(currentPlayers.length);
                     switchScreen('create-game-screen');
+                });
+
+                // Server is the authority on who the host is. Fires after every
+                // join / leave / disconnect / reconnect.
+                socket.on('host_update', (data) => {
+                    isHost = (data.host === user);
+                    currentPlayers = data.players;
+                    renderLobbyAvatars(data.players);
+                    refreshLobbyControls(data.players.length);
+                    if ($('#game-over-panel').is(':visible')) {
+                        $('#host-end-controls').toggle(isHost);
+                        $('#player-end-controls').toggle(!isHost);
+                    }
+                });
+
+                socket.on('cant_start_game', (data) => {
+                    showToast(data.message, true);
+                    refreshLobbyControls(currentPlayers.length);
                 });
 
                 // --- NEW EVENT: GAME OVER ---

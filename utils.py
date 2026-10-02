@@ -335,6 +335,30 @@ def remove_sid_if_matches(player_to_sids, player, sid_to_remove):
     return Resp(routine_resp=False)
 
 
+@execute_action(filename="sid_to_players.json")
+def remove_sid_to_username(sid_to_player, sid: str) -> None:
+    """Drop a socket's entry once it disconnects, so the file doesn't grow
+    by one line per connection forever."""
+    if sid in sid_to_player:
+        del sid_to_player[sid]
+        return Resp(file_json=sid_to_player)
+
+
+def reset_sid_maps() -> None:
+    """Call once at startup. Sockets don't survive a restart, so anything
+    left in these two files is stale: no disconnect event will ever arrive
+    to clean it up, and stale player_to_sid entries make dropped players
+    look connected."""
+    for filename in ("sid_to_players.json", "player_to_sid.json"):
+        lock = _get_lock(filename)
+        lock.acquire_write()
+        try:
+            with open(filename, "w") as fp:
+                json.dump({}, fp)
+        finally:
+            lock.release_write()
+
+
 def get_sid(player: str) -> str:
     player_to_sids = getFile("player_to_sid.json")
     return player_to_sids.get(player)

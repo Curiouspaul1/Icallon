@@ -5,7 +5,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 
 from flask import request
-from flask_socketio import emit, join_room, leave_room
+from flask_socketio import emit, join_room, leave_room, ConnectionRefusedError
 
 from extensions import ioclient
 from utils import (
@@ -36,12 +36,16 @@ from utils import (
     clear_used_letters,
     delete_room,
     unmap_player_from_room,
+    remove_sid_to_username,
+    reset_sid_maps,
 )
 
 # =========================================================
 # ROUND STATE
 # =========================================================
 
+# Sockets from a previous run are gone; start with clean sid maps.
+reset_sid_maps()
 
 class RoundPhase(str, Enum):
     PICKING = "picking"
@@ -106,6 +110,33 @@ def _connected_count(room_id):
     return sum(1 for p in players if get_sid(p))
 
 
+def _host_of(room_id, players=None):
+    """The host is the first player in the roster who currently has a live
+    socket. Deriving it (instead of trusting whoever happened to create the
+    room) means a room can never end up with nobody able to start it: if
+    the creator leaves or drops, the next connected player takes over, and
+    the creator gets it back when they return."""
+    if players is None:
+        players = get_players(room_id) or []
+    for p in players:
+        if get_sid(p):
+            return p
+    return players[0] if players else None
+
+
+def _broadcast_host(room_id):
+    """Tell everyone in the room who the host is right now. Sent after
+    every roster/connection change so clients never guess."""
+    players = get_players(room_id)
+    if not players:
+        return
+    ioclient.emit(
+        "host_update",
+        {"host": _host_of(room_id, players), "players": players},
+        to=room_id,
+    )
+
+
 def _leave_previous_room(username, new_room_id=None):
     """Detach a player from whatever room they were last mapped to, before
     they join or create a different one. Without this, creating/joining a
@@ -124,6 +155,7 @@ def _leave_previous_room(username, new_room_id=None):
     remaining = get_players(old_room_id)
     if remaining:
         emit("player_left", remaining, to=old_room_id)
+        _broadcast_host(old_room_id)
 
     if _connected_count(old_room_id) == 0:
         schedule_room_destroy(old_room_id)
@@ -158,6 +190,13 @@ def _teardown_room(room_id):
     print(f"🗑️ Room {room_id} torn down")
 
 
+# How long a room with nobody connected survives. A lobby gets much longer
+# than a running game: the creator's socket drops the moment they switch
+# apps to share the room code, and 30s isn't enough to paste it in a chat.
+EMPTY_GAME_GRACE = 30
+EMPTY_LOBBY_GRACE = 300
+
+
 def schedule_room_destroy(room_id):
     """Room just hit 0 connected players. Give it 30s to come back to life
     before wiping it — also immediately silences any in-flight gameplay
@@ -172,17 +211,42 @@ def schedule_room_destroy(room_id):
     state = get_state(room_id)
     state.phase_id = time.time()  # invalidate any timers already in flight
 
+    grace = EMPTY_GAME_GRACE if is_in_session(room_id) else EMPTY_LOBBY_GRACE
     room_destroy_timers[room_id] = gevent.spawn_later(
-        30, destroy_empty_room, room_id, state.phase_id
+        grace, destroy_empty_room, room_id, state.phase_id
     )
-    print(f"🕒 Room {room_id} is empty — destroying in 30s if nobody returns")
+    print(f"🕒 Room {room_id} is empty — destroying in {grace}s if nobody returns")
 
 
 def cancel_room_destroy(room_id):
+    """Returns True if a destroy was actually pending."""
     if room_id in room_destroy_timers:
         gevent.kill(room_destroy_timers[room_id])
         del room_destroy_timers[room_id]
         print(f"✅ Room {room_id} un-emptied — destroy cancelled")
+        return True
+    return False
+
+
+def _resume_round(room_id):
+    """schedule_room_destroy() cancels every gameplay timer. If someone then
+    comes back, nothing was restarting them, so the game sat frozen on
+    whatever phase it was in. Re-arm the timer for the current phase."""
+    state = get_state(room_id)
+
+    if state.phase == RoundPhase.ANSWERING and state.letter:
+        start_answering_timer(room_id)
+    elif state.phase == RoundPhase.VOTING and state.contested_items:
+        start_voting_timer(room_id)
+    elif state.phase == RoundPhase.LEADERBOARD:
+        trigger_next_round(room_id, state.phase_id)
+    elif state.phase == RoundPhase.GAME_OVER:
+        state.phase_id = time.time()
+        gevent.spawn_later(30, auto_destroy_room, room_id, state.phase_id)
+    else:
+        # Picking (or a server restart wiped RAM): same player, fresh clock.
+        start_turn_timer(room_id)
+    print(f"🔄 Resumed room {room_id} in phase {state.phase.value}")
 
 
 def destroy_empty_room(room_id, expected_phase_id):
@@ -248,7 +312,7 @@ def handle_turn_timeout(room_id, expected_phase_id):
         if room_id in turn_timers:
             del turn_timers[room_id]
 
-        next_player_turn({"room_id": room_id})
+        _advance_turn(room_id)
 
     except Exception as e:
         print(f"Error in turn timeout: {e}")
@@ -379,7 +443,8 @@ def connect(auth):
         print(f"⚠️ Auth check errored for {username}; rejecting connection")
         return False
     if not auth_result:
-        return False
+        # Give the client a reason it can tell apart from "server is down".
+        raise ConnectionRefusedError("username_taken")
 
     store_sid(username, request.sid)
     store_sid_to_username(username, request.sid)
@@ -397,12 +462,15 @@ def connect(auth):
 
     players = get_players(room_id)
 
-    if not players:
+    if not players or username not in players:
+        # Room is gone, or this player left it earlier and the mapping is
+        # stale. Don't drag them back into a room they aren't part of.
+        unmap_player_from_room(username)
         ioclient.emit("show_home_screen", to=request.sid)
         return True
 
     join_room(room_id)
-    cancel_room_destroy(room_id)
+    destroy_was_pending = cancel_room_destroy(room_id)
 
     ioclient.emit(
         "player_reconnected",
@@ -431,12 +499,13 @@ def connect(auth):
     # -------------------------------------------------
     # IF ROUND STATE EXISTS
     # -------------------------------------------------
-    if not state and game_started:
-        # 🚑 SERVER RESTARTED MID-GAME: RAM is wiped but game is active.
-        # We must kickstart the round again so the room doesn't freeze!
-        start_turn_timer(room_id)
+    if game_started and (not state or destroy_was_pending):
+        # Either the server restarted mid-game (RAM wiped), or everyone
+        # dropped and the timers were cancelled. Kickstart the round again
+        # so the room doesn't freeze.
+        _resume_round(room_id)
         state = round_states.get(room_id)
-        print(f"🔄 Recovered ghost state for room {room_id}")
+        turn_player = get_turn_player(room_id)
 
     if state:
         phase = state.phase.value
@@ -456,7 +525,7 @@ def connect(auth):
         "room_id": room_id,
         "game_started": game_started,
         "players": players,
-        "is_host": players[0] == username,
+        "is_host": _host_of(room_id, players) == username,
         "categories": config["categories"],
         "allowed_letters": config["allowed_letters"],
         "turn_player": turn_player,
@@ -470,6 +539,7 @@ def connect(auth):
     }
 
     ioclient.emit("restore_session", payload, to=request.sid)
+    _broadcast_host(room_id)
 
     print(f"✅ Connected (restored): {username}")
     return True
@@ -479,6 +549,7 @@ def connect(auth):
 def disconnect(reason):
 
     player = get_user_from_sid(request.sid)
+    remove_sid_to_username(request.sid)
 
     if player:
         was_current_connection = remove_sid_if_matches(player, request.sid)
@@ -492,6 +563,8 @@ def disconnect(reason):
                         {"player": player, "players": get_players(room_id)},
                         to=room_id,
                     )
+                    # The host may be the one who just dropped.
+                    _broadcast_host(room_id)
                 else:
                     schedule_room_destroy(room_id)
 
@@ -533,6 +606,7 @@ def join(data):
     map_player_to_room(username, room)
 
     emit("player_joined", get_players(room), to=room)
+    _broadcast_host(room)
 
 
 @ioclient.on("join_public")
@@ -558,9 +632,7 @@ def handle_join_public():
     map_player_to_room(username, room_id)
 
     players = get_players(room_id)
-
-    # If they are the only player in the room, they are the Host
-    is_host = len(players) == 1
+    is_host = _host_of(room_id, players) == username
 
     # 4. Tell the joining player they successfully joined
     emit(
@@ -570,6 +642,7 @@ def handle_join_public():
 
     # 5. Tell everyone else in the lobby that a new player joined
     emit("player_joined", players, to=room_id)
+    _broadcast_host(room_id)
 
 
 @ioclient.on("create")
@@ -594,6 +667,7 @@ def new_room(data=None):
     map_player_to_room(username, roomID)
 
     emit("game_code", roomID)
+    _broadcast_host(roomID)
 
 
 # =========================================================
@@ -606,16 +680,25 @@ def start_game(data):
 
     room_id = data["room_id"]
 
-    players = get_players(room_id)
+    if is_in_session(room_id):
+        # Already started — ignore a duplicate/late "start" (double-click,
+        # network retry, stale reconnect, etc). Without this, a second
+        # start_game call would advance the turn pointer a second time
+        # and silently skip whoever should have gone first.
+        return
 
-    if not players or len(players) < 2:
-        emit("cant_start_game", {"message": "Need at least 2 players"})
+    players = get_players(room_id)
+    username = get_user_from_sid(request.sid)
+
+    if not players or _host_of(room_id, players) != username:
+        emit("cant_start_game", {"message": "Only the host can start the match"})
+        return
+
+    if _connected_count(room_id) < 2:
+        emit("cant_start_game", {"message": "Need at least 2 players online"})
         return
 
     set_room_mode(room_id)
-
-    player = get_player_turn(room_id)
-    set_turn_player(room_id, player)
     config = get_room_config(room_id)
 
     ioclient.emit(
@@ -628,23 +711,10 @@ def start_game(data):
         to=room_id,
     )
 
-    player_sid = get_sid(player)
-
-    if player_sid:
-        ioclient.emit(
-            "private_player_turn",
-            {"disabledLetters": get_used_letters(room_id)},
-            to=player_sid,
-        )
-
-    ioclient.emit("public_player_turn", player, to=room_id)
-
-    start_turn_timer(room_id)
+    _advance_turn(room_id)
 
 
-@ioclient.on("next_player_turn")
-def next_player_turn(data):
-    room_id = data["room_id"]
+def _advance_turn(room_id):
     player = get_player_turn(room_id)
     set_turn_player(room_id, player)
 
@@ -671,11 +741,16 @@ def handle_leave_room(data):
 
         # 2. Remove them from the room's database/JSON
         removeFromRoom(room_id, player)
+        if get_player_room(player) == room_id:
+            # Forget the mapping too, otherwise their next reconnect pulls
+            # them straight back into the room they just left.
+            unmap_player_from_room(player)
 
         # 3. Tell everyone else in the room that they left
         remaining_players = get_players(room_id)
         if remaining_players:
             emit("player_left", remaining_players, to=room_id)
+            _broadcast_host(room_id)
 
         # 3b. If that was the last connected player, start the teardown clock.
         if _connected_count(room_id) == 0:
@@ -693,15 +768,26 @@ def handle_leave_room(data):
 @ioclient.on("letter_selected")
 def letter_selected(data):
 
-    letter = data["letter"]
     room_id = data["room_id"]
+    state = round_states.get(room_id)
+
+    # Only the player whose turn it currently is can pick a letter, and
+    # only while we're actually in the picking phase. Without this, any
+    # stray or duplicate client event could reset an in-progress
+    # answering round for everyone — wiping every player's typed answers
+    # — regardless of who sent it or when.
+    if not state or state.phase != RoundPhase.PICKING:
+        return
+
+    turn_player = get_user_from_sid(request.sid)
+    if turn_player != get_turn_player(room_id):
+        return
+
+    letter = data["letter"]
 
     cancel_turn_timer(room_id)
-    turn_player = get_user_from_sid(request.sid)
     cross_letter(room_id, letter)
     set_turn_player(room_id, turn_player)
-
-    state = get_state(room_id)
 
     state.phase = RoundPhase.ANSWERING
     state.letter = letter
@@ -942,7 +1028,7 @@ def trigger_next_round(room_id, expected_phase_id):
         gevent.spawn_later(30, auto_destroy_room, room_id, state.phase_id)
     else:
         # Game continues!
-        next_player_turn({"room_id": room_id})
+        _advance_turn(room_id)
 
 
 def auto_destroy_room(room_id, expected_phase_id):
@@ -964,7 +1050,7 @@ def force_end_game(data):
     players = get_players(room_id)
 
     # Only the host (player index 0) can end the game
-    if players and players[0] == username:
+    if players and _host_of(room_id, players) == username:
         ioclient.emit(
             "room_destroyed", {"message": "Host ended the match."}, to=room_id
         )
@@ -998,4 +1084,4 @@ def restart_game(data):
         )
 
         # 4. Start the game loop
-        next_player_turn({"room_id": room_id})
+        _advance_turn(room_id)

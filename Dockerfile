@@ -1,14 +1,14 @@
-FROM python:3.12.9-bullseye
+FROM python:3.12-bookworm
 
 WORKDIR /app
 
 COPY . .
 
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpcre2-dev \
     libssl-dev \
     build-essential \
-    python3-dev
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip install gunicorn
 RUN pip install -r requirements.txt
