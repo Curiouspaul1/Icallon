@@ -1,3 +1,4 @@
+import random
 import time
 import uuid
 import gevent
@@ -37,7 +38,19 @@ from utils import (
     delete_room,
     unmap_player_from_room,
     remove_sid_to_username,
+    get_open_public_rooms,
+    letter_to_idx,
     reset_sid_maps,
+)
+
+from bots import (
+    DIFFICULTY,
+    DEFAULT_DIFFICULTY,
+    is_bot,
+    make_bot_names,
+    pick_solo_letters,
+    plan_answers,
+    answers_ready,
 )
 
 # =========================================================
@@ -46,6 +59,7 @@ from utils import (
 
 # Sockets from a previous run are gone; start with clean sid maps.
 reset_sid_maps()
+
 
 class RoundPhase(str, Enum):
     PICKING = "picking"
@@ -76,7 +90,7 @@ class RoundState:
         self.timer_start = time.time()
         self.timer_duration = duration
         self.phase_id = self.timer_start
-    
+
     def time_left(self):
         if not self.timer_start or not self.timer_duration:
             return None
@@ -110,19 +124,64 @@ def _connected_count(room_id):
     return sum(1 for p in players if get_sid(p))
 
 
+def _bots_in(room_id):
+    return [p for p in (get_players(room_id) or []) if is_bot(p)]
+
+
+def _participant_count(room_id):
+    """Everyone who will hand in answers this round: connected humans plus
+    bots. (_connected_count stays humans-only on purpose: it decides
+    whether a room is alive, and bots must never keep a room alive.)"""
+    return _connected_count(room_id) + len(_bots_in(room_id))
+
+
+def _only_bots_left(room_id):
+    players = get_players(room_id)
+    return bool(players) and all(is_bot(p) for p in players)
+
+
+HOST_STABLE_SECS = 30
+connected_since = {}  # username -> time their current socket connected
+room_hosts = {}  # room_id -> who is acting host right now
+
+
+def _is_stable(player, now):
+    since = connected_since.get(player)
+    return since is not None and now - since >= HOST_STABLE_SECS
+
+
 def _host_of(room_id, players=None):
-    """The host is the first player in the roster who currently has a live
-    socket. Deriving it (instead of trusting whoever happened to create the
-    room) means a room can never end up with nobody able to start it: if
-    the creator leaves or drops, the next connected player takes over, and
-    the creator gets it back when they return."""
+    """Who is host right now.
+
+    Roster order is the order of entitlement: the creator first, then
+    whoever joined next. The role goes to the highest-ranked player who is
+    online AND has been online for HOST_STABLE_SECS. Until someone
+    qualifies, whoever is already acting host keeps it; if they're gone
+    too, the first online player covers.
+
+    So: creator drops -> next online player is promoted at once. Creator
+    returns -> the stand-in keeps the role until the creator has stayed
+    connected for 30s, then it goes back.
+    """
     if players is None:
         players = get_players(room_id) or []
-    for p in players:
-        if get_sid(p):
-            return p
-    return players[0] if players else None
+    if not players:
+        room_hosts.pop(room_id, None)
+        return None
 
+    online = [p for p in players if get_sid(p)]
+    if not online:
+        # Nobody to act; nominally the top of the roster.
+        return players[0]
+
+    now = time.time()
+    current = room_hosts.get(room_id)
+    host = next((p for p in online if _is_stable(p, now)), None)
+    if host is None:
+        host = current if current in online else online[0]
+
+    room_hosts[room_id] = host
+    return host
 
 def _broadcast_host(room_id):
     """Tell everyone in the room who the host is right now. Sent after
@@ -132,9 +191,49 @@ def _broadcast_host(room_id):
         return
     ioclient.emit(
         "host_update",
-        {"host": _host_of(room_id, players), "players": players},
+        {
+            "host": _host_of(room_id, players),
+            "players": players,
+            # Who actually has a live socket. The roster alone can't tell
+            # the client whether START should be enabled.
+            "connected": [p for p in players if get_sid(p) or is_bot(p)],
+        },
         to=room_id,
     )
+
+
+# A player who drops out of a *lobby* keeps their seat this long, then is
+# removed from the roster. (Mid-game drops keep their seat; turns skip them.)
+LOBBY_GHOST_GRACE = 120
+lobby_drop_marks = {}  # username -> time they dropped
+
+
+def _prune_lobby_ghosts(room_id):
+    """Remove lobby players who dropped more than LOBBY_GHOST_GRACE ago and
+    never came back. Only runs while somebody live is in the room; a fully
+    empty lobby is handled by schedule_room_destroy instead."""
+    if is_in_session(room_id) or _connected_count(room_id) == 0:
+        return
+
+    now = time.time()
+    removed = False
+    for p in list(get_players(room_id) or []):
+        if get_sid(p):
+            lobby_drop_marks.pop(p, None)
+            continue
+        dropped_at = lobby_drop_marks.get(p)
+        # No mark means they dropped before a restart: treat as expired.
+        if dropped_at is None or now - dropped_at >= LOBBY_GHOST_GRACE:
+            removeFromRoom(room_id, p)
+            if get_player_room(p) == room_id:
+                unmap_player_from_room(p)
+            lobby_drop_marks.pop(p, None)
+            removed = True
+            print(f"👻 Pruned {p} from lobby {room_id}")
+
+    if removed:
+        ioclient.emit("player_left", get_players(room_id), to=room_id)
+        _broadcast_host(room_id)
 
 
 def _leave_previous_room(username, new_room_id=None):
@@ -152,6 +251,11 @@ def _leave_previous_room(username, new_room_id=None):
     leave_room(old_room_id)
     removeFromRoom(old_room_id, username)
 
+    if _only_bots_left(old_room_id):
+        # Solo room and its human just moved on: nothing left to wait for.
+        _teardown_room(old_room_id)
+        return
+
     remaining = get_players(old_room_id)
     if remaining:
         emit("player_left", remaining, to=old_room_id)
@@ -168,6 +272,10 @@ def _teardown_room(room_id):
     cancel_answering_timer(room_id)
     cancel_voting_timer(room_id)
 
+    room_hosts.pop(room_id, None)
+    room_bot_level.pop(room_id, None)
+    bot_plans.pop(room_id, None)
+
     timer = room_destroy_timers.get(room_id)
     if timer:
         # Careful: this can be called FROM the destroy-timer's own
@@ -180,7 +288,7 @@ def _teardown_room(room_id):
             gevent.kill(timer)
         del room_destroy_timers[room_id]
 
-    for player in (get_players(room_id) or []):
+    for player in get_players(room_id) or []:
         unmap_player_from_room(player)
 
     if room_id in round_states:
@@ -236,6 +344,7 @@ def _resume_round(room_id):
 
     if state.phase == RoundPhase.ANSWERING and state.letter:
         start_answering_timer(room_id)
+        _bots_start_answering(room_id)
     elif state.phase == RoundPhase.VOTING and state.contested_items:
         start_voting_timer(room_id)
     elif state.phase == RoundPhase.LEADERBOARD:
@@ -246,6 +355,7 @@ def _resume_round(room_id):
     else:
         # Picking (or a server restart wiped RAM): same player, fresh clock.
         start_turn_timer(room_id)
+        _bot_take_turn(room_id)
     print(f"🔄 Resumed room {room_id} in phase {state.phase.value}")
 
 
@@ -436,6 +546,10 @@ def connect(auth):
     username = auth["username"]
     token = auth["token"]
 
+    if is_bot(username):
+        # Reserved for computer players; nobody may impersonate one.
+        raise ConnectionRefusedError("username_taken")
+
     auth_result = verify_and_register_user(username, token)
     if auth_result is None:
         # execute_action swallowed an exception (file I/O hiccup, etc.) —
@@ -447,6 +561,7 @@ def connect(auth):
         raise ConnectionRefusedError("username_taken")
 
     store_sid(username, request.sid)
+    connected_since[username] = time.time()
     store_sid_to_username(username, request.sid)
 
     room_id = get_player_room(username)
@@ -540,6 +655,9 @@ def connect(auth):
 
     ioclient.emit("restore_session", payload, to=request.sid)
     _broadcast_host(room_id)
+    # Once this player has been back long enough to count as stable, the
+    # host role may be due back to them: re-evaluate and tell the room.
+    gevent.spawn_later(HOST_STABLE_SECS + 1, _broadcast_host, room_id)
 
     print(f"✅ Connected (restored): {username}")
     return True
@@ -554,6 +672,7 @@ def disconnect(reason):
     if player:
         was_current_connection = remove_sid_if_matches(player, request.sid)
         if was_current_connection:
+            connected_since.pop(player, None)
             room_id = get_player_room(player)
             if room_id:
                 if _connected_count(room_id) > 0:
@@ -567,6 +686,13 @@ def disconnect(reason):
                     _broadcast_host(room_id)
                 else:
                     schedule_room_destroy(room_id)
+
+                if not is_in_session(room_id):
+                    # Hold their lobby seat for a while, then free it.
+                    lobby_drop_marks[player] = time.time()
+                    gevent.spawn_later(
+                        LOBBY_GHOST_GRACE + 1, _prune_lobby_ghosts, room_id
+                    )
 
 
 # =========================================================
@@ -607,6 +733,7 @@ def join(data):
 
     emit("player_joined", get_players(room), to=room)
     _broadcast_host(room)
+    _prune_lobby_ghosts(room)
 
 
 @ioclient.on("join_public")
@@ -615,8 +742,17 @@ def handle_join_public():
     if not username:
         return
 
-    # 1. Try to find an existing open public room
-    room_id = find_available_public_room()
+    # 1. Try to find an existing open public room that somebody is
+    #    actually in. A lobby whose players have all dropped is just waiting
+    #    to be destroyed; matching into it strands the new player.
+    room_id = next(
+        (
+            rid
+            for rid, roster in (get_open_public_rooms() or [])
+            if any(get_sid(p) for p in roster if p != username)
+        ),
+        None,
+    )
 
     # 2. If no open public room exists, create a brand new one
     if not room_id:
@@ -643,7 +779,7 @@ def handle_join_public():
     # 5. Tell everyone else in the lobby that a new player joined
     emit("player_joined", players, to=room_id)
     _broadcast_host(room_id)
-
+    _prune_lobby_ghosts(room_id)
 
 @ioclient.on("create")
 def new_room(data=None):
@@ -668,6 +804,164 @@ def new_room(data=None):
 
     emit("game_code", roomID)
     _broadcast_host(roomID)
+
+
+@ioclient.on("create_solo")
+def new_solo_room(data=None):
+    """One human against 1-3 bots. No lobby: the match starts at once."""
+    username = get_user_from_sid(request.sid)
+    if not username:
+        return
+    data = data or {}
+
+    def _int(key, default, low, high):
+        try:
+            return max(low, min(high, int(data.get(key, default))))
+        except (TypeError, ValueError):
+            return default
+
+    n_bots = _int("bots", 2, 1, 3)
+    rounds = _int("rounds", 5, 3, 26)
+    level = data.get("difficulty")
+    if level not in DIFFICULTY:
+        level = DEFAULT_DIFFICULTY
+
+    room_id = genRoomId()
+    indexRoom(room_id, allowed_letters=pick_solo_letters(rounds))
+
+    _leave_previous_room(username, room_id)
+    join_room(room_id)
+
+    # Human first, so they get the first turn.
+    addToRoom(room_id, username)
+    map_player_to_room(username, room_id)
+    for bot in make_bot_names(n_bots):
+        addToRoom(room_id, bot)
+    room_bot_level[room_id] = level
+
+    set_room_mode(room_id)
+    config = get_room_config(room_id)
+
+    emit("solo_room", {"room_id": room_id})
+    ioclient.emit(
+        "game_started",
+        {
+            "players": get_players(room_id),
+            "categories": config["categories"],
+            "allowed_letters": config["allowed_letters"],
+        },
+        to=room_id,
+    )
+    _broadcast_host(room_id)
+    _advance_turn(room_id)
+
+
+# =========================================================
+# BOT PLAY
+# =========================================================
+# Bots act through the same functions people do (_begin_round,
+# _record_answers). Every timer carries the round's phase_id, so anything
+# scheduled for a round that has since moved on simply does nothing.
+
+room_bot_level = {}  # room_id -> difficulty name
+bot_plans = {}  # room_id -> {bot: {"start": time, "plan": [...]}}
+
+
+def _bot_take_turn(room_id):
+    """If it's a bot's turn to pick a letter, have it pick after a pause."""
+    bot = get_turn_player(room_id)
+    if not is_bot(bot):
+        return
+    state = get_state(room_id)
+    gevent.spawn_later(
+        random.uniform(1.5, 3.5), _bot_pick_letter, room_id, bot, state.phase_id
+    )
+
+
+def _bot_pick_letter(room_id, bot, expected_phase_id):
+    try:
+        state = round_states.get(room_id)
+        if not state or state.phase_id != expected_phase_id:
+            return
+        if state.phase != RoundPhase.PICKING or get_turn_player(room_id) != bot:
+            return
+
+        config = get_room_config(room_id)
+        used = set(get_used_letters(room_id) or [])
+        free = [c for c in config["allowed_letters"] if letter_to_idx(c) not in used]
+        if free:
+            _begin_round(room_id, bot, random.choice(free))
+    except Exception as e:
+        print(f"Error in bot letter pick: {e}")
+
+
+def _bots_start_answering(room_id):
+    """Plan each bot's round and schedule when it hands its answers in."""
+    bots = _bots_in(room_id)
+    if not bots:
+        return
+
+    state = get_state(room_id)
+    config = get_room_config(room_id)
+    level = room_bot_level.get(room_id, DEFAULT_DIFFICULTY)
+    plans = bot_plans.setdefault(room_id, {})
+
+    for bot in bots:
+        if bot in state.answers:
+            continue
+        plan = plan_answers(config["categories"], state.letter, level)
+        plans[bot] = {"start": time.time(), "plan": plan}
+        finish_at = plan[-1][2] if plan else 1.0
+        gevent.spawn_later(
+            finish_at + 0.2, _bot_submit, room_id, bot, state.phase_id
+        )
+
+
+def _bot_answers_now(room_id, bot):
+    entry = bot_plans.get(room_id, {}).get(bot)
+    if not entry:
+        return {}
+    return answers_ready(entry["plan"], time.time() - entry["start"])
+
+
+def _bot_submit(room_id, bot, expected_phase_id):
+    try:
+        state = round_states.get(room_id)
+        if not state or state.phase_id != expected_phase_id:
+            return
+        if state.phase != RoundPhase.ANSWERING or bot in state.answers:
+            return
+        _record_answers(room_id, bot, _bot_answers_now(room_id, bot))
+    except Exception as e:
+        print(f"Error in bot submit: {e}")
+
+
+def _flush_bots(room_id):
+    """The round is being cut short (turn player finished, or the clock
+    ran out). Bots hand in whatever they had written by now."""
+    state = round_states.get(room_id)
+    if not state:
+        return
+    for bot in _bots_in(room_id):
+        if bot not in state.answers:
+            state.answers[bot] = _bot_answers_now(room_id, bot)
+
+
+def _bots_vote(room_id, contested):
+    """Bots approve every contested word that isn't their own. They have
+    no way to judge it, and rejecting a person's answer at random would
+    just feel unfair."""
+    for bot in _bots_in(room_id):
+        for item in contested:
+            if item["player"] != bot:
+                item["votes_yes"] += 1
+
+
+def _humans_can_vote(room_id, contested):
+    """Is there at least one connected person with someone else's word to
+    judge?"""
+    humans = [p for p in (get_players(room_id) or []) if not is_bot(p) and get_sid(p)]
+    return any(item["player"] != h for h in humans for item in contested)
 
 
 # =========================================================
@@ -728,6 +1022,7 @@ def _advance_turn(room_id):
 
     ioclient.emit("public_player_turn", player, to=room_id)
     start_turn_timer(room_id)
+    _bot_take_turn(room_id)
 
 
 @ioclient.on("leave_room")
@@ -745,6 +1040,12 @@ def handle_leave_room(data):
             # Forget the mapping too, otherwise their next reconnect pulls
             # them straight back into the room they just left.
             unmap_player_from_room(player)
+
+        if _only_bots_left(room_id):
+            # Solo room: the human is gone, so the room goes with them.
+            _teardown_room(room_id)
+            emit("left_room_success", to=request.sid)
+            return
 
         # 3. Tell everyone else in the room that they left
         remaining_players = get_players(room_id)
@@ -783,7 +1084,12 @@ def letter_selected(data):
     if turn_player != get_turn_player(room_id):
         return
 
-    letter = data["letter"]
+    _begin_round(room_id, turn_player, data["letter"])
+
+
+def _begin_round(room_id, turn_player, letter):
+    """A letter has been picked (by a person or a bot): start answering."""
+    state = get_state(room_id)
 
     cancel_turn_timer(room_id)
     cross_letter(room_id, letter)
@@ -798,6 +1104,7 @@ def letter_selected(data):
     start_answering_timer(room_id)
 
     ioclient.emit("letter_chosen", letter, to=room_id)
+    _bots_start_answering(room_id)
 
 
 # =========================================================
@@ -816,12 +1123,23 @@ def handle_player_answer(data):
     if not state or state.phase != RoundPhase.ANSWERING:
         return
 
-    state.answers[player] = data["answers"]
-    current_turn_player = get_turn_player(room_id)
-    if player == current_turn_player:
-        ioclient.emit("force_submit", {}, to=room_id)
+    _record_answers(room_id, player, data["answers"])
 
-    if len(state.answers) >= _connected_count(room_id):
+
+def _record_answers(room_id, player, answers):
+    """Take one player's answers (person or bot) and end the round if
+    that was the last set we were waiting for."""
+    state = round_states.get(room_id)
+    if not state or state.phase != RoundPhase.ANSWERING:
+        return
+
+    state.answers[player] = answers
+    if player == get_turn_player(room_id):
+        # The turn player finishing ends the round for everyone.
+        ioclient.emit("force_submit", {}, to=room_id)
+        _flush_bots(room_id)
+
+    if len(state.answers) >= _participant_count(room_id):
         process_validation(room_id)
 
 
@@ -838,6 +1156,9 @@ def process_validation(room_id):
 
     if not state or state.phase != RoundPhase.ANSWERING:
         return
+
+    # Time's up for bots too: take whatever they've written so far.
+    _flush_bots(room_id)
 
     state.phase = RoundPhase.VALIDATING
 
@@ -888,8 +1209,14 @@ def process_validation(room_id):
 
     state.contested_items = contested
 
+    if contested and _bots_in(room_id):
+        _bots_vote(room_id, contested)
+        if not _humans_can_vote(room_id, contested):
+            # Solo: every contested word is the human's own, so there is
+            # nobody to wait for. Skip the 30s voting screen.
+            finalize_scores(room_id)
+            return
     if contested:
-
         start_voting_timer(room_id)
 
         ioclient.emit("start_voting", contested, room=room_id)
@@ -1063,7 +1390,7 @@ def restart_game(data):
     username = get_user_from_sid(request.sid)
     players = get_players(room_id)
 
-    if players and players[0] == username:
+    if players and _host_of(room_id, players) == username:
         # 1. Kill the self-destruct timer by changing the phase_id
         state = get_state(room_id)
         state.phase_id = time.time()

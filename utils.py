@@ -225,6 +225,22 @@ def find_available_public_room(rooms, max_players=8):
     return Resp(routine_resp=None)
 
 
+@execute_read(filename="rooms.json")
+def get_open_public_rooms(rooms, max_players=8):
+    """All public lobbies that haven't started and aren't full, oldest
+    first, as (room_id, players) pairs. The caller decides which one is
+    actually alive."""
+    found = []
+    for room_id, room_data in rooms.items():
+        if room_data.get("is_public", False) and not room_data.get(
+            "game_started", False
+        ):
+            players = room_data.get("players", [])
+            if len(players) < max_players:
+                found.append((room_id, list(players)))
+    return Resp(routine_resp=found)
+
+
 @execute_action(filename="rooms.json")
 def set_turn_player(rooms, room_id, player):
     if room_id in rooms:
