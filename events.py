@@ -82,6 +82,8 @@ class RoundState:
     scores: dict = field(default_factory=dict)
     letter: str | None = None
     validity_reports: dict = field(default_factory=dict)
+    breakdown: dict = field(default_factory=dict)
+    modifier: dict | None = None
 
     timer_start: float | None = None
     timer_duration: int | None = None
@@ -433,18 +435,80 @@ def handle_turn_timeout(room_id, expected_phase_id):
 # ---------------------------------------------------------
 
 
+# What players see on the round clock. The server waits a little longer
+# than that before closing the round, so answers sent on the last second
+# still arrive in time.
+ANSWER_SECONDS = 30
+ANSWER_GRACE = 5
+
+
 def start_answering_timer(room_id):
     if room_id in answering_timers:
         gevent.kill(answering_timers[room_id])
 
     state = get_state(room_id)
+    visible = (state.modifier or {}).get("seconds", ANSWER_SECONDS)
+    duration = visible + ANSWER_GRACE
 
     state.phase = RoundPhase.ANSWERING
-    state.start_timer(35)
+    state.start_timer(duration)
 
     answering_timers[room_id] = gevent.spawn_later(
-        35, handle_answering_timeout, room_id, state.phase_id
+        duration, handle_answering_timeout, room_id, state.phase_id
     )
+
+
+# ---------------------------------------------------------
+# ROUND MODIFIERS
+# ---------------------------------------------------------
+# Some rounds play by a twist. The last round of a game is always worth
+# double, so whoever is behind still has something to play for; other
+# rounds (never the first) occasionally come up as a twist at random.
+# Games shorter than MODIFIER_MIN_ROUNDS are left plain.
+
+MODIFIER_MIN_ROUNDS = 4
+LIGHTNING_CHANCE = 0.15
+DOUBLE_CHANCE = 0.15
+LIGHTNING_SECONDS = 15
+
+
+def _pick_modifier(room_id):
+    """Decide the twist for the round that is just starting, or None.
+    Call after the round's letter has been crossed off."""
+    config = get_room_config(room_id)
+    total_rounds = len(config["allowed_letters"])
+    round_no = len(get_used_letters(room_id) or [])
+
+    if total_rounds < MODIFIER_MIN_ROUNDS:
+        return None
+
+    if round_no >= total_rounds:
+        return {
+            "type": "double",
+            "label": "Final round: double points",
+            "multiplier": 2,
+            "seconds": ANSWER_SECONDS,
+        }
+
+    if round_no <= 1:
+        return None
+
+    roll = random.random()
+    if roll < LIGHTNING_CHANCE:
+        return {
+            "type": "lightning",
+            "label": f"Lightning round: {LIGHTNING_SECONDS} seconds",
+            "multiplier": 1,
+            "seconds": LIGHTNING_SECONDS,
+        }
+    if roll < LIGHTNING_CHANCE + DOUBLE_CHANCE:
+        return {
+            "type": "double",
+            "label": "Double points round",
+            "multiplier": 2,
+            "seconds": ANSWER_SECONDS,
+        }
+    return None
 
 
 def cancel_answering_timer(room_id):
@@ -610,6 +674,8 @@ def connect(auth):
     time_left = None
     total_duration = None
     scores = {}
+    breakdown = {}
+    modifier = None
 
     # -------------------------------------------------
     # IF ROUND STATE EXISTS
@@ -628,9 +694,12 @@ def connect(auth):
         voting_data = state.contested_items
         time_left = state.time_left()
         total_duration = state.timer_duration
+        if state.phase == RoundPhase.ANSWERING:
+            modifier = state.modifier
 
-        if state.phase == RoundPhase.LEADERBOARD:
+        if state.phase in (RoundPhase.LEADERBOARD, RoundPhase.GAME_OVER):
             scores = state.scores
+            breakdown = state.breakdown
 
     # -------------------------------------------------
     # BUILD RESTORE PAYLOAD
@@ -651,6 +720,9 @@ def connect(auth):
         "time_left": time_left,
         "total_duration": total_duration,
         "scores": scores,
+        "breakdown": breakdown,
+        "modifier": modifier,
+        "answer_seconds": (modifier or {}).get("seconds", ANSWER_SECONDS),
     }
 
     ioclient.emit("restore_session", payload, to=request.sid)
@@ -1100,9 +1172,13 @@ def _begin_round(room_id, turn_player, letter):
     state.answers.clear()
     state.contested_items.clear()
     state.votes_cast_count = 0
+    state.modifier = _pick_modifier(room_id)
 
     start_answering_timer(room_id)
 
+    # Always sent (null on a plain round) and always before the letter, so
+    # the client knows how long the clock is when it starts it.
+    ioclient.emit("round_modifier", state.modifier, to=room_id)
     ioclient.emit("letter_chosen", letter, to=room_id)
     _bots_start_answering(room_id)
 
@@ -1269,6 +1345,83 @@ def handle_votes(data):
 # =========================================================
 
 
+# Classic rule: an answer nobody else gave is worth full points; if two or
+# more players wrote the same thing in the same category they share less.
+POINTS_UNIQUE = 10
+POINTS_SHARED = 5
+
+
+def _answer_key(word):
+    """How two answers are compared: case and spacing don't matter."""
+    return " ".join(word.lower().split())
+
+
+def _score_round(state):
+    """Work out every player's points for the round just played.
+
+    Returns {player: {category: {"word", "points", "result"}}} where result
+    is one of: unique, shared, rejected (voted down), wrong_letter.
+    """
+    letter = state.letter.lower()
+    breakdown = {}
+
+    for player, answers in state.answers.items():
+        # Reuse what process_validation already computed instead of
+        # re-running (and re-geocoding) everything from scratch. Only
+        # falls back to a fresh computation if something's missing.
+        validity = state.validity_reports.get(player) or get_answer_validity(
+            answers, letter
+        )
+        rows = {}
+        for cat, details in validity.items():
+            status = details["status"]
+            accepted = status == "valid"
+
+            if status == "needs_vote":
+                item = next(
+                    (
+                        x
+                        for x in state.contested_items
+                        if x["player"] == player
+                        and x["category"] == cat
+                        and x["word"] == details["word"]
+                    ),
+                    None,
+                )
+                accepted = bool(item and item["votes_yes"] >= item["votes_no"])
+
+            if accepted:
+                result = "unique"  # may be downgraded to "shared" below
+            elif status == "invalid":
+                result = "wrong_letter"
+            else:
+                result = "rejected"
+            rows[cat] = {"word": details["word"], "points": 0, "result": result}
+        breakdown[player] = rows
+
+    # Count how many players gave each accepted answer, per category.
+    counts = {}
+    for rows in breakdown.values():
+        for cat, row in rows.items():
+            if row["result"] == "unique":
+                key = (cat, _answer_key(row["word"]))
+                counts[key] = counts.get(key, 0) + 1
+
+    multiplier = (state.modifier or {}).get("multiplier", 1)
+
+    for rows in breakdown.values():
+        for cat, row in rows.items():
+            if row["result"] != "unique":
+                continue
+            if counts[(cat, _answer_key(row["word"]))] > 1:
+                row["result"] = "shared"
+                row["points"] = POINTS_SHARED * multiplier
+            else:
+                row["points"] = POINTS_UNIQUE * multiplier
+
+    return breakdown
+
+
 def finalize_scores(room_id):
 
     state = round_states.get(room_id)
@@ -1283,51 +1436,27 @@ def finalize_scores(room_id):
 
     state.phase = RoundPhase.FINISHED
 
-    letter = state.letter.lower()
-    round_scores = {}
-
-    for player, answers in state.answers.items():
-
-        points = 0
-        # Reuse what process_validation already computed instead of
-        # re-running (and re-geocoding) everything from scratch. Only
-        # falls back to a fresh computation if something's missing.
-        validity = state.validity_reports.get(player) or get_answer_validity(
-            answers, letter
-        )
-
-        for cat, details in validity.items():
-
-            is_valid = False
-
-            if details["status"] == "valid":
-                is_valid = True
-
-            elif details["status"] == "needs_vote":
-
-                item = next(
-                    (
-                        x
-                        for x in state.contested_items
-                        if x["player"] == player and x["word"] == details["word"]
-                    ),
-                    None,
-                )
-
-                if item and item["votes_yes"] >= item["votes_no"]:
-                    is_valid = True
-
-            if is_valid:
-                points += 10
-
-        round_scores[player] = points
+    breakdown = _score_round(state)
+    round_scores = {
+        player: sum(row["points"] for row in rows.values())
+        for player, rows in breakdown.items()
+    }
 
     all_scores = commit_round_scores(room_id, round_scores)
 
     state.phase = RoundPhase.LEADERBOARD
     state.scores = all_scores
+    state.breakdown = {
+        "letter": state.letter,
+        "answers": breakdown,
+        "round_scores": round_scores,
+        "modifier": state.modifier,
+    }
     state.start_timer(10)
 
+    # Sent just before the totals so the client can show, under each
+    # player, what they wrote and what each answer earned.
+    ioclient.emit("round_breakdown", state.breakdown, room=room_id)
     ioclient.emit("round_result", all_scores, room=room_id)
 
     # REPLACED: gevent.sleep(10) with a non-blocking background task

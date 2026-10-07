@@ -744,7 +744,9 @@
             </div>
 
             <h1 class="text-4xl font-black tracking-tight mb-2">SCORES</h1>
-            <p class="text-slate-400 font-bold mb-8 uppercase tracking-widest text-sm">Round Results</p>
+            <p class="text-slate-400 font-bold uppercase tracking-widest text-sm">Round Results</p>
+            <p id="round-modifier-note" class="text-yellow-300 font-black text-sm mt-2" style="display: none;"></p>
+            <div class="mb-8"></div>
 
             <div id="leaderboard-container" class="w-full space-y-3">
             </div>
@@ -812,8 +814,14 @@
                         go to a vote. The majority rules!</div>
                 </li>
                 <li class="flex gap-3"><span class="text-primary font-black text-lg">4</span>
-                    <div><strong class="text-white block">Scoring:</strong> Valid words get 10 points. The highest score
-                        at the end of the rounds wins the game.</div>
+                    <div><strong class="text-white block">Scoring:</strong> A valid answer nobody else wrote gets 10
+                        points. If another player wrote the same answer, you each get 5. The highest score at the
+                        end of the rounds wins the game.</div>
+                </li>
+                <li class="flex gap-3"><span class="text-primary font-black text-lg">5</span>
+                    <div><strong class="text-white block">Twists:</strong> In games of 4 rounds or more, the final
+                        round is worth double points. Along the way you may also hit a surprise double points round,
+                        or a lightning round with only 15 seconds on the clock.</div>
                 </li>
             </ul>
         </div>
@@ -842,6 +850,100 @@
             let isHost = false;
             let isJoiningViaLink = false;
             let hasConnectedOnce = false;
+            let lastBreakdown = null;     // per-answer results for the round just scored
+            let roundModifier = null;     // twist on the round in play (double points, lightning), or null
+
+            // Player names and answers are typed by other people: never put
+            // them into HTML without escaping.
+            function esc(text) {
+                return String(text == null ? '' : text).replace(/[&<>"']/g, c => (
+                    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+                ));
+            }
+
+            const ANSWER_STYLES = {
+                unique: { cls: 'bg-green-500/15 border-green-500/40 text-green-300', note: 'only you' },
+                shared: { cls: 'bg-yellow-500/15 border-yellow-500/40 text-yellow-200', note: 'shared' },
+                rejected: { cls: 'bg-slate-700/40 border-slate-600 text-slate-400 line-through', note: 'voted out' },
+                wrong_letter: { cls: 'bg-slate-700/40 border-slate-600 text-slate-400 line-through', note: 'wrong letter' }
+            };
+
+            // The row of answer chips shown under a player on the scores screen.
+            function answerChipsHtml(player) {
+                const rows = lastBreakdown && lastBreakdown.answers && lastBreakdown.answers[player];
+                if (!rows) return '';
+                const cats = (activeCategories && activeCategories.length) ? activeCategories : Object.keys(rows);
+                const chips = cats.filter(c => rows[c]).map(c => {
+                    const r = rows[c];
+                    const style = ANSWER_STYLES[r.result] || ANSWER_STYLES.rejected;
+                    return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold ${style.cls}" title="${esc(c)}: ${style.note}">${esc(r.word)}<span class="no-underline opacity-80">${r.points ? '+' + r.points : '0'}</span></span>`;
+                }).join('');
+                if (!chips) return '<p class="mt-3 text-xs text-slate-500">No answers this round</p>';
+                return `<div class="mt-3 flex flex-wrap gap-2">${chips}</div>`;
+            }
+
+            // Builds the scores screen. Used after every round and when a
+            // player reconnects while the scores are showing.
+            function showRoundResults(scores, secondsToNext) {
+                clearAllGameTimers();
+                clearInterval(votingTimerInterval);
+                hideOverlay();
+                $('#voting-screen').hide();
+                $('#game-arena').hide();
+
+                // A rematch reuses this screen: undo the game-over layout.
+                $('#game-over-panel').hide();
+                $('#round-transition-panel').show();
+
+                let sortedPlayers = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+                let myUsername = localStorage.getItem('username');
+                let roundScores = (lastBreakdown && lastBreakdown.round_scores) || {};
+                let playedModifier = lastBreakdown && lastBreakdown.modifier;
+                $('#round-modifier-note').text(playedModifier ? '⚡ ' + playedModifier.label : '').toggle(!!playedModifier);
+
+                $('#leaderboard-container').empty();
+                sortedPlayers.forEach((player, index) => {
+                    let rank = index + 1;
+                    let pts = scores[player];
+                    let isMe = player === myUsername;
+                    let gained = roundScores[player];
+
+                    let medalColor = rank === 1 ? 'text-yellow-400' : (rank === 2 ? 'text-slate-300' : (rank === 3 ? 'text-amber-600' : 'text-slate-600'));
+                    let cardStyle = isMe ? 'bg-primary/20 border-primary' : 'bg-slate-800/80 border-slate-700';
+
+                    let html = `
+                        <div class="${cardStyle} border rounded-2xl p-4 shadow-md">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4 min-w-0">
+                                    <div class="font-black text-2xl w-6 text-center ${medalColor}">${rank}</div>
+                                    <div class="font-bold ${isMe ? 'text-white' : 'text-slate-300'} text-lg truncate">${esc(player)} ${isMe ? '<span class="text-xs ml-1 text-primary bg-primary/20 px-2 py-1 rounded-full">YOU</span>' : ''}</div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-black text-2xl text-white">${pts} <span class="text-sm font-bold text-slate-500">pts</span></div>
+                                    ${gained !== undefined ? `<div class="text-xs font-bold ${gained ? 'text-green-400' : 'text-slate-500'}">+${gained} this round</div>` : ''}
+                                </div>
+                            </div>
+                            ${answerChipsHtml(player)}
+                        </div>
+                    `;
+                    $('#leaderboard-container').append(html);
+                });
+
+                // Countdown to the next round (the server waits 10s).
+                let nextRoundT = (secondsToNext === undefined || secondsToNext === null) ? 10 : secondsToNext;
+                $('#next-round-timer').text(nextRoundT);
+                clearInterval(leaderboardTimerInterval);
+                leaderboardTimerInterval = setInterval(() => {
+                    nextRoundT--;
+                    if (nextRoundT >= 0) {
+                        $('#next-round-timer').text(nextRoundT);
+                    } else {
+                        clearInterval(leaderboardTimerInterval);
+                    }
+                }, 1000);
+
+                switchScreen('leaderboard-screen');
+            }
             let hostName = null;          // who the server says is host
             let onlinePlayers = null;     // roster members with a live socket (null = unknown)
 
@@ -1527,6 +1629,7 @@
                 });
 
                 socket.on('game_started', (data) => {
+                    lastBreakdown = null;
                     activeCategories = data.categories; gameAlphabet = data.allowed_letters;
                     switchScreen('game-arena');
 
@@ -1551,8 +1654,7 @@
                     }
                 });
 
-                function startGuessingTimer(secondsLeft) {
-                    let totalTime = 30;
+                function startGuessingTimer(secondsLeft, totalTime = 30) {
                     let t = secondsLeft;
                     clearInterval(guessingTimerInterval);
 
@@ -1584,6 +1686,13 @@
                     }, 1000);
                 }
 
+                // Sent just before letter_chosen on every round: null for a
+                // plain round, otherwise the twist and how long the clock is.
+                socket.on('round_modifier', (mod) => {
+                    roundModifier = mod || null;
+                    if (roundModifier) showToast('⚡ ' + roundModifier.label);
+                });
+
                 socket.on('letter_chosen', (letter) => {
                     clearAllGameTimers();
                     clearInterval(turnTimerInterval);
@@ -1593,7 +1702,7 @@
                     $('#waiting-turn-screen').hide();
 
                     $('#gameplay-top-bar').fadeIn();
-                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>`);
+                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>${roundModifier ? `<span class="ml-2 text-xs font-black text-yellow-300">${esc(roundModifier.label)}</span>` : ''}`);
 
                     $('#guessing-letter-display').text(`Letter: ${letter}`);
 
@@ -1603,8 +1712,9 @@
                     updateInputUI();
                     $('#dynamic-inputs-area').fadeIn();
 
-                    // Call our new extracted function
-                    startGuessingTimer(30);
+                    // A lightning round runs on a shorter clock.
+                    let roundSeconds = roundModifier ? roundModifier.seconds : 30;
+                    startGuessingTimer(roundSeconds, roundSeconds);
                 });
 
                 socket.on('force_submit', () => {
@@ -1637,54 +1747,12 @@
                     });
                 });
 
+                // Arrives just before round_result: what everyone wrote this
+                // round and what each answer earned.
+                socket.on('round_breakdown', (data) => { lastBreakdown = data; });
+
                 socket.on('round_result', (scores) => {
-                    clearAllGameTimers();
-                    clearInterval(votingTimerInterval);
-                    hideOverlay();
-                    $('#voting-screen').hide();
-                    $('#game-arena').hide();
-
-                    // 1. Sort Scores Highest to Lowest
-                    let sortedPlayers = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
-                    let myUsername = localStorage.getItem('username');
-
-                    // 2. Build Leaderboard UI
-                    $('#leaderboard-container').empty();
-                    sortedPlayers.forEach((player, index) => {
-                        let rank = index + 1;
-                        let pts = scores[player];
-                        let isMe = player === myUsername;
-
-                        // Assign colors based on rank
-                        let medalColor = rank === 1 ? 'text-yellow-400' : (rank === 2 ? 'text-slate-300' : (rank === 3 ? 'text-amber-600' : 'text-slate-600'));
-                        let cardStyle = isMe ? 'bg-primary/20 border-primary' : 'bg-slate-800/80 border-slate-700';
-
-                        let html = `
-                            <div class="${cardStyle} border rounded-2xl p-4 flex items-center justify-between shadow-md">
-                                <div class="flex items-center gap-4">
-                                    <div class="font-black text-2xl w-6 text-center ${medalColor}">${rank}</div>
-                                    <div class="font-bold ${isMe ? 'text-white' : 'text-slate-300'} text-lg">${player} ${isMe ? '<span class="text-xs ml-1 text-primary bg-primary/20 px-2 py-1 rounded-full">YOU</span>' : ''}</div>
-                                </div>
-                                <div class="font-black text-2xl text-white">${pts} <span class="text-sm font-bold text-slate-500">pts</span></div>
-                            </div>
-                        `;
-                        $('#leaderboard-container').append(html);
-                    });
-
-                    // 3. Start 10s Countdown (Matches server's gevent.sleep(10))
-                    let nextRoundT = 10;
-                    $('#next-round-timer').text(nextRoundT);
-                    clearInterval(leaderboardTimerInterval);
-                    leaderboardTimerInterval = setInterval(() => {
-                        nextRoundT--;
-                        if (nextRoundT >= 0) {
-                            $('#next-round-timer').text(nextRoundT);
-                        } else {
-                            clearInterval(leaderboardTimerInterval);
-                        }
-                    }, 1000);
-
-                    switchScreen('leaderboard-screen');
+                    showRoundResults(scores, 10);
                 });
 
                 socket.on('info_toast', (data) => showToast(data.message));
@@ -1746,9 +1814,11 @@
                             $('#dynamic-inputs-area').fadeIn();
 
                             // Start the timer with the exact remaining time
+                            roundModifier = data.modifier || null;
+                            let roundSeconds = data.answer_seconds || 30;
                             let elapsed = totalDuration - timeLeft;
-                            let visibleTimeLeft = Math.max(0, 30 - elapsed);
-                            startGuessingTimer(visibleTimeLeft);
+                            let visibleTimeLeft = Math.max(0, roundSeconds - elapsed);
+                            startGuessingTimer(visibleTimeLeft, roundSeconds);
 
                         } else if (state === 'picking') {
                             switchScreen('game-arena');
@@ -1761,20 +1831,8 @@
                                 waitTurnTimer(data.turn_player, pickTime);
                             }
                         } else if (state === 'leaderboard') {
-                            // Trigger your existing leaderboard display logic
-                            // data.scores contains the scores we just passed from the backend
-
-                            // Note: Since your socket.on('round_result') already handles sorting 
-                            // and displaying, you can just manually trigger that same logic:
-
-                            let mockScores = data.scores || {};
-                            // Your existing logic uses a 10s timer, we sync it to the real remaining time
-                            let remaining = data.time_left !== undefined ? data.time_left : 10;
-
-                            // To avoid rewriting your UI code, just emit a local event or extract 
-                            // your leaderboard UI building code into a function and call it here.
-
-                            console.log("Restoring to leaderboard with time:", remaining);
+                            lastBreakdown = (data.breakdown && data.breakdown.answers) ? data.breakdown : null;
+                            showRoundResults(data.scores || {}, timeLeft !== null ? timeLeft : 10);
                         } else {
                             // STATE 3: Default/Fallback
                             switchScreen('game-arena');
