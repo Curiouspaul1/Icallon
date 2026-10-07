@@ -168,6 +168,9 @@ def get_room_config(rooms, room_id):
                 "allowed_letters": rooms[room_id].get(
                     "allowed_letters", "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                 ),
+                # "standard" or "daily" (the daily challenge)
+                "mode": rooms[room_id].get("mode", "standard"),
+                "daily_date": rooms[room_id].get("daily_date"),
             }
         )
 
@@ -186,8 +189,14 @@ def addToRoom(rooms: dict, room_id: str, player: str) -> None:
 
 @execute_action(filename="rooms.json")
 def indexRoom(
-    rooms, room_id, categories=None, allowed_letters=None, is_public=False
-):  # <--- ADD is_public=False
+    rooms,
+    room_id,
+    categories=None,
+    allowed_letters=None,
+    is_public=False,
+    mode="standard",
+    daily_date=None,
+):
     if not categories:
         categories = ["Name", "Animal", "Place", "Thing"]
     if not allowed_letters:
@@ -207,6 +216,8 @@ def indexRoom(
         "player_to_score": {},
         "game_started": False,
         "is_public": is_public,  # <--- NEW: Track if it's a public room
+        "mode": mode,
+        "daily_date": daily_date,
         "last_interaction": time.time(),
     }
     return Resp(file_json=rooms)

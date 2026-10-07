@@ -43,6 +43,7 @@ from utils import (
     reset_sid_maps,
 )
 
+import daily
 from bots import (
     DIFFICULTY,
     DEFAULT_DIFFICULTY,
@@ -84,6 +85,8 @@ class RoundState:
     validity_reports: dict = field(default_factory=dict)
     breakdown: dict = field(default_factory=dict)
     modifier: dict | None = None
+    # Daily challenge: how long the player took to answer this round.
+    answer_seconds: float | None = None
 
     timer_start: float | None = None
     timer_duration: int | None = None
@@ -356,8 +359,11 @@ def _resume_round(room_id):
         gevent.spawn_later(30, auto_destroy_room, room_id, state.phase_id)
     else:
         # Picking (or a server restart wiped RAM): same player, fresh clock.
-        start_turn_timer(room_id)
-        _bot_take_turn(room_id)
+        if _is_daily(room_id):
+            _daily_get_ready(room_id)
+        else:
+            start_turn_timer(room_id)
+            _bot_take_turn(room_id)
     print(f"🔄 Resumed room {room_id} in phase {state.phase.value}")
 
 
@@ -480,6 +486,10 @@ def _pick_modifier(room_id):
     round_no = len(get_used_letters(room_id) or [])
 
     if total_rounds < MODIFIER_MIN_ROUNDS:
+        return None
+
+    if config.get("mode") == "daily":
+        # Everyone must play the day's game under identical rules.
         return None
 
     if round_no >= total_rounds:
@@ -723,6 +733,7 @@ def connect(auth):
         "breakdown": breakdown,
         "modifier": modifier,
         "answer_seconds": (modifier or {}).get("seconds", ANSWER_SECONDS),
+        "mode": config.get("mode", "standard"),
     }
 
     ioclient.emit("restore_session", payload, to=request.sid)
@@ -929,6 +940,131 @@ def new_solo_room(data=None):
 
 
 # =========================================================
+# DAILY CHALLENGE
+# =========================================================
+# A daily game is an ordinary room with one human in it and mode="daily".
+# Differences from a normal game: the server deals the letters (same ones,
+# same order, for everyone that day), there is no voting and no round
+# twists, each round's score is saved to the daily board as it is played,
+# and the room disappears as soon as the last round is scored.
+
+DAILY_GET_READY_SECS = 3
+
+
+def _is_daily(room_id):
+    return (get_room_config(room_id) or {}).get("mode") == "daily"
+
+
+@ioclient.on("daily_status")
+def daily_status(data=None):
+    """Today's board plus whether this player has used their attempt."""
+    username = get_user_from_sid(request.sid)
+    if not username:
+        return
+    emit("daily_status", daily.board(daily.today(), username))
+
+
+@ioclient.on("create_daily")
+def new_daily_room(data=None):
+    username = get_user_from_sid(request.sid)
+    if not username:
+        return
+
+    date = daily.today()
+    if not daily.start(date, username):
+        # Already played today (or the attempt couldn't be saved): show
+        # the board instead of starting a game.
+        emit("daily_status", daily.board(date, username))
+        return
+
+    room_id = genRoomId()
+    indexRoom(
+        room_id,
+        categories=list(daily.DAILY_CATEGORIES),
+        allowed_letters=daily.letters_for(date),
+        mode="daily",
+        daily_date=date,
+    )
+
+    _leave_previous_room(username, room_id)
+    join_room(room_id)
+    addToRoom(room_id, username)
+    map_player_to_room(username, room_id)
+    set_turn_player(room_id, username)
+
+    set_room_mode(room_id)
+    config = get_room_config(room_id)
+
+    emit("solo_room", {"room_id": room_id})
+    ioclient.emit(
+        "game_started",
+        {
+            "players": get_players(room_id),
+            "categories": config["categories"],
+            # The letters stay secret until each round starts.
+            "allowed_letters": "",
+            "mode": "daily",
+        },
+        to=room_id,
+    )
+    _broadcast_host(room_id)
+    _advance_turn(room_id)
+
+
+def _daily_get_ready(room_id):
+    """Short pause before each round, then the server deals the letter."""
+    cancel_turn_timer(room_id)
+    config = get_room_config(room_id)
+    state = get_state(room_id)
+    state.phase = RoundPhase.PICKING
+    state.start_timer(DAILY_GET_READY_SECS)
+
+    ioclient.emit(
+        "daily_round",
+        {
+            "round": len(get_used_letters(room_id) or []) + 1,
+            "of": len(config["allowed_letters"]),
+            "seconds": DAILY_GET_READY_SECS,
+        },
+        to=room_id,
+    )
+    gevent.spawn_later(
+        DAILY_GET_READY_SECS, _daily_deal_letter, room_id, state.phase_id
+    )
+
+
+def _daily_deal_letter(room_id, expected_phase_id):
+    try:
+        state = round_states.get(room_id)
+        if not state or state.phase_id != expected_phase_id:
+            return
+        if state.phase != RoundPhase.PICKING:
+            return
+        if _connected_count(room_id) == 0:
+            schedule_room_destroy(room_id)
+            return
+
+        config = get_room_config(room_id)
+        letters = config["allowed_letters"]
+        played = len(get_used_letters(room_id) or [])
+        if played >= len(letters):
+            return
+        player = (get_players(room_id) or [None])[0]
+        _begin_round(room_id, player, letters[played])
+    except Exception as e:
+        print(f"Error dealing daily letter: {e}")
+
+
+def _finish_daily(room_id, date):
+    """Last round scored: show each player the board and close the room."""
+    for player in get_players(room_id) or []:
+        sid = get_sid(player)
+        if sid:
+            ioclient.emit("daily_result", daily.board(date, player), to=sid)
+    _teardown_room(room_id)
+
+
+# =========================================================
 # BOT PLAY
 # =========================================================
 # Bots act through the same functions people do (_begin_round,
@@ -1081,6 +1217,10 @@ def start_game(data):
 
 
 def _advance_turn(room_id):
+    if _is_daily(room_id):
+        _daily_get_ready(room_id)
+        return
+
     player = get_player_turn(room_id)
     set_turn_player(room_id, player)
 
@@ -1156,6 +1296,9 @@ def letter_selected(data):
     if turn_player != get_turn_player(room_id):
         return
 
+    if _is_daily(room_id):
+        return  # the day's letters come from the server, in a fixed order
+
     _begin_round(room_id, turn_player, data["letter"])
 
 
@@ -1172,6 +1315,7 @@ def _begin_round(room_id, turn_player, letter):
     state.answers.clear()
     state.contested_items.clear()
     state.votes_cast_count = 0
+    state.answer_seconds = None
     state.modifier = _pick_modifier(room_id)
 
     start_answering_timer(room_id)
@@ -1210,6 +1354,8 @@ def _record_answers(room_id, player, answers):
         return
 
     state.answers[player] = answers
+    if state.answer_seconds is None and state.timer_start:
+        state.answer_seconds = min(time.time() - state.timer_start, ANSWER_SECONDS)
     if player == get_turn_player(room_id):
         # The turn player finishing ends the round for everyone.
         ioclient.emit("force_submit", {}, to=room_id)
@@ -1284,6 +1430,16 @@ def process_validation(room_id):
                 )
 
     state.contested_items = contested
+
+    if _is_daily(room_id):
+        # No voting in the daily challenge: there is nobody to vote, and
+        # the leaderboard is only fair if every player is judged the same
+        # way. A word the game doesn't recognise scores nothing.
+        state.contested_items = []
+        for player in get_players(room_id) or []:
+            state.answers.setdefault(player, {})
+        finalize_scores(room_id)
+        return
 
     if contested and _bots_in(room_id):
         _bots_vote(room_id, contested)
@@ -1442,6 +1598,14 @@ def finalize_scores(room_id):
         for player, rows in breakdown.items()
     }
 
+    config = get_room_config(room_id) or {}
+    if config.get("mode") == "daily":
+        seconds = (
+            state.answer_seconds if state.answer_seconds is not None else ANSWER_SECONDS
+        )
+        for player, points in round_scores.items():
+            daily.record_round(config["daily_date"], player, points, seconds)
+
     all_scores = commit_round_scores(room_id, round_scores)
 
     state.phase = RoundPhase.LEADERBOARD
@@ -1475,6 +1639,10 @@ def trigger_next_round(room_id, expected_phase_id):
     # --- NEW: EXHAUSTION CHECK ---
     # If the number of used letters equals or exceeds the total allowed letters...
     if len(used_letters) >= len(config["allowed_letters"]):
+        if config.get("mode") == "daily":
+            _finish_daily(room_id, config["daily_date"])
+            return
+
         state.phase = RoundPhase.GAME_OVER
         state.phase_id = time.time()  # New Epoch ID for the self-destruct timer
 
@@ -1518,6 +1686,9 @@ def restart_game(data):
     room_id = data["room_id"]
     username = get_user_from_sid(request.sid)
     players = get_players(room_id)
+
+    if _is_daily(room_id):
+        return  # one attempt per day
 
     if players and _host_of(room_id, players) == username:
         # 1. Kill the self-destruct timer by changing the phase_id

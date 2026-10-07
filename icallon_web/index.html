@@ -184,6 +184,18 @@
                 </div>
             </button>
 
+            <button id="open-daily-btn" type="button"
+                class="w-full bg-slate-800/80 hover:bg-slate-700 border border-yellow-500/40 hover:border-yellow-400 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group shadow-md">
+                <div class="text-left">
+                    <h3 class="font-black text-xl text-yellow-300 mb-1">DAILY CHALLENGE</h3>
+                    <p class="text-slate-400 text-sm font-medium">Same letters for everyone, one try</p>
+                </div>
+                <div
+                    class="size-10 rounded-full bg-slate-700/50 flex items-center justify-center group-hover:bg-yellow-500/20 transition-all text-yellow-300">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                </div>
+            </button>
+
             <button onclick="switchScreen('solo-setup-screen')"
                 class="w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-3xl p-6 flex items-center justify-between transition-all active:scale-95 group shadow-md">
                 <div class="text-left">
@@ -223,6 +235,70 @@
                 class="mt-4 text-sm font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest mx-auto">
                 <span class="material-symbols-outlined align-middle text-lg mr-1">help</span> How to Play
             </button>
+        </main>
+    </div>
+
+    <div id="daily-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <header class="flex items-center justify-between p-6 border-b border-slate-800">
+            <button type="button" onclick="switchScreen('game-selection-screen')"
+                class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 hover:border-primary/50 transition-colors active:scale-95 text-slate-300"
+                aria-label="Back">
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            </button>
+            <h1 class="font-bold text-lg tracking-wide uppercase">Daily Challenge</h1>
+            <div class="size-10"></div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto px-6 py-8 pb-16 max-w-md w-full mx-auto space-y-6">
+            <p id="daily-date" class="text-center text-slate-400 font-bold uppercase tracking-widest text-sm"></p>
+
+            <!-- Shown until today's attempt has been used -->
+            <div id="daily-intro" class="bg-slate-800/50 border border-slate-700 rounded-3xl p-6 space-y-4"
+                style="display: none;">
+                <ul class="space-y-2 text-sm text-slate-300">
+                    <li><strong class="text-white">5 rounds</strong>, 30 seconds each. Everyone gets the same letters
+                        today.</li>
+                    <li><strong class="text-white">One attempt.</strong> Starting uses it up, even if you leave half
+                        way.</li>
+                    <li><strong class="text-white">No voting.</strong> Only answers the game recognises score, 10
+                        points each.</li>
+                    <li>Ties go to whoever answered faster.</li>
+                </ul>
+                <button type="button" id="start-daily-btn"
+                    class="w-full bg-primary hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-[0_10px_30px_rgba(236,91,19,0.4)] transition-transform active:scale-95 uppercase tracking-widest">
+                    Play today's challenge
+                </button>
+            </div>
+
+            <!-- Shown once today's attempt has been used -->
+            <div id="daily-mine" class="bg-primary/10 border border-primary/40 rounded-3xl p-6 text-center space-y-3"
+                style="display: none;">
+                <p class="text-slate-300 text-xs font-bold uppercase tracking-widest">Your score today</p>
+                <p class="text-5xl font-black text-white"><span id="daily-my-score">0</span><span
+                        class="text-xl text-slate-400">/<span id="daily-max-score">200</span></span></p>
+                <p id="daily-my-rounds" class="text-2xl tracking-widest" aria-hidden="true"></p>
+                <p id="daily-my-rank" class="text-slate-300 font-bold text-sm"></p>
+                <button type="button" id="share-daily-btn"
+                    class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-lg" aria-hidden="true">share</span>
+                    <span id="share-daily-text">Share result</span>
+                </button>
+                <p class="text-slate-400 text-xs">A new challenge starts at midnight (Lagos time).</p>
+            </div>
+
+            <div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button type="button" data-board="today"
+                        class="daily-tab py-3 rounded-xl border-2 font-black text-sm uppercase tracking-wider">Today</button>
+                    <button type="button" data-board="week"
+                        class="daily-tab py-3 rounded-xl border-2 font-black text-sm uppercase tracking-wider">This
+                        week</button>
+                </div>
+                <div id="daily-board" class="space-y-2"></div>
+                <p id="daily-board-note" class="text-slate-500 text-xs text-center mt-3"></p>
+            </div>
         </main>
     </div>
 
@@ -1123,6 +1199,123 @@
 
             $('#username').keypress(function (e) { if (e.which == 13) { e.preventDefault(); $('#submit-username').click(); } });
 
+            // --- Daily challenge ---
+            let gameMode = null;          // 'daily' while a daily challenge is being played
+            let dailyData = null;         // last board the server sent
+            let dailyTab = 'today';
+
+            function ordinal(n) {
+                const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            }
+
+            // One square per round: green = all four, yellow = some, white = none.
+            function dailySquares(rounds, total) {
+                let out = '';
+                for (let i = 0; i < total; i++) {
+                    const pts = rounds[i];
+                    out += pts === undefined ? '▫️' : (pts >= 40 ? '🟩' : (pts > 0 ? '🟨' : '⬜'));
+                }
+                return out;
+            }
+
+            function dailyShareText() {
+                if (!dailyData || !dailyData.me) return '';
+                const me = dailyData.me;
+                return `Icallon Daily ${dailyData.date}\n${me.score}/${dailyData.max_score} ${dailySquares(me.rounds, dailyData.rounds)}\nCan you beat me? ${window.location.origin}`;
+            }
+
+            function renderDailyBoard() {
+                if (!dailyData) return;
+                $('.daily-tab').each(function () {
+                    const on = $(this).data('board') === dailyTab;
+                    $(this).toggleClass('border-primary bg-primary/10 text-white', on)
+                        .toggleClass('border-slate-700 bg-slate-800/50 text-slate-400', !on)
+                        .attr('aria-pressed', on ? 'true' : 'false');
+                });
+
+                const myName = localStorage.getItem('username');
+                const rows = dailyTab === 'today' ? dailyData.top : dailyData.week;
+                const board = $('#daily-board').empty();
+                if (!rows.length) {
+                    board.append('<p class="text-slate-500 text-sm text-center py-6">Nobody has played yet. Be the first.</p>');
+                }
+                rows.forEach((row, i) => {
+                    const isMe = row.name === myName;
+                    const detail = dailyTab === 'today'
+                        ? `${row.seconds}s`
+                        : `${row.days} ${row.days === 1 ? 'day' : 'days'}`;
+                    board.append(`
+                        <div class="${isMe ? 'bg-primary/20 border-primary' : 'bg-slate-800/80 border-slate-700'} border rounded-2xl px-4 py-3 flex items-center justify-between">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="font-black text-lg w-6 text-center text-slate-400">${i + 1}</span>
+                                <span class="font-bold truncate ${isMe ? 'text-white' : 'text-slate-300'}">${esc(row.name)}</span>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="font-black text-white">${row.score}</span>
+                                <span class="text-xs text-slate-500 ml-2">${detail}</span>
+                            </div>
+                        </div>`);
+                });
+
+                const total = dailyTab === 'today' ? dailyData.players : dailyData.week_players;
+                const myRank = dailyTab === 'today' ? dailyData.rank : dailyData.week_rank;
+                let note = total > rows.length ? `Top ${rows.length} of ${total} players.` : '';
+                if (myRank && myRank > rows.length) note += ` You are ${ordinal(myRank)}.`;
+                $('#daily-board-note').text(note.trim());
+            }
+
+            function renderDaily(data) {
+                dailyData = data;
+                hideOverlay();
+                $('#daily-date').text(data.date);
+                $('#daily-max-score').text(data.max_score);
+                $('#daily-intro').toggle(!data.played);
+                $('#daily-mine').toggle(!!data.played);
+                if (data.played && data.me) {
+                    $('#daily-my-score').text(data.me.score);
+                    $('#daily-my-rounds').text(dailySquares(data.me.rounds, data.rounds));
+                    $('#daily-my-rank').text(
+                        (data.rank ? `${ordinal(data.rank)} of ${data.players} today` : '') +
+                        (data.me.finished ? '' : ' · not finished')
+                    );
+                }
+                renderDailyBoard();
+                switchScreen('daily-screen');
+            }
+
+            $('#open-daily-btn').click(function () {
+                if (!socket || !socket.connected) return;
+                showOverlay("Loading today's challenge...");
+                socket.emit('daily_status');
+            });
+
+            $('#start-daily-btn').click(function () {
+                if (!socket || !socket.connected) return;
+                showOverlay("Get ready...");
+                if (typeof gtag === 'function') gtag('event', 'daily_start');
+                socket.emit('create_daily');
+            });
+
+            $('.daily-tab').click(function () {
+                dailyTab = $(this).data('board');
+                renderDailyBoard();
+            });
+
+            $('#share-daily-btn').click(function () {
+                const text = dailyShareText();
+                if (!text) return;
+                const copied = () => {
+                    $('#share-daily-text').text('Copied!');
+                    setTimeout(() => $('#share-daily-text').text('Share result'), 2000);
+                };
+                if (navigator.share) {
+                    navigator.share({ text: text }).catch(() => { });
+                } else if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(copied).catch(() => { });
+                }
+            });
+
             // --- Solo match setup ---
             const soloSettings = {};
             function selectSoloOption(btn) {
@@ -1476,6 +1669,26 @@
                     if (data.player !== user) showToast(`${data.player} is back.`);
                 });
 
+                // Daily challenge: the board (on request, or when a second
+                // attempt is refused) and the final result.
+                socket.on('daily_status', (data) => renderDaily(data));
+
+                socket.on('daily_result', (data) => {
+                    clearAllGameTimers();
+                    gameCode = ''; isHost = false; gameMode = null;
+                    if (typeof gtag === 'function') gtag('event', 'daily_finish', { score: data.me ? data.me.score : 0 });
+                    renderDaily(data);
+                });
+
+                // Before each daily round the server deals the letter itself.
+                socket.on('daily_round', (data) => {
+                    clearAllGameTimers();
+                    $('#letter-selection').hide();
+                    $('#waiting-turn-screen').hide();
+                    switchScreen('game-arena');
+                    showOverlay(`Round ${data.round} of ${data.of}. Get ready...`);
+                });
+
                 // Solo match: there is no lobby, game_started follows immediately.
                 socket.on('solo_room', (data) => {
                     gameCode = data.room_id;
@@ -1617,6 +1830,7 @@
                 });
 
                 socket.on('left_room_success', () => {
+                    gameMode = null;
                     gameCode = ''; isHost = false; inviteCode = null;
                     $('#lobby-avatars').empty(); $('#qr-container').hide();
                     switchScreen('game-selection-screen');
@@ -1629,6 +1843,7 @@
                 });
 
                 socket.on('game_started', (data) => {
+                    gameMode = data.mode || null;
                     lastBreakdown = null;
                     activeCategories = data.categories; gameAlphabet = data.allowed_letters;
                     switchScreen('game-arena');
@@ -1694,6 +1909,7 @@
                 });
 
                 socket.on('letter_chosen', (letter) => {
+                    hideOverlay();
                     clearAllGameTimers();
                     clearInterval(turnTimerInterval);
                     currentLetter = letter;
@@ -1764,6 +1980,7 @@
                     isHost = data.is_host;
                     activeCategories = data.categories || [];
                     gameAlphabet = data.allowed_letters || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                    gameMode = data.mode === 'daily' ? 'daily' : null;
 
                     $('#display-game-code').text(gameCode);
 
@@ -1820,6 +2037,12 @@
                             let visibleTimeLeft = Math.max(0, roundSeconds - elapsed);
                             startGuessingTimer(visibleTimeLeft, roundSeconds);
 
+                        } else if (gameMode === 'daily' && state === 'picking') {
+                            // The server deals the next letter in a moment.
+                            switchScreen('game-arena');
+                            $('#letter-selection').hide();
+                            $('#waiting-turn-screen').hide();
+                            showOverlay("Get ready...");
                         } else if (state === 'picking') {
                             switchScreen('game-arena');
                             let pickTime = timeLeft !== null ? timeLeft : 10;
