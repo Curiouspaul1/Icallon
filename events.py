@@ -41,9 +41,15 @@ from utils import (
     get_open_public_rooms,
     letter_to_idx,
     reset_sid_maps,
+    reset_scores,
+    clean_categories,
+    clean_letters,
+    clean_answers,
+    MAX_USERNAME_LEN,
 )
 
 import daily
+from packs import get_pack
 from bots import (
     DIFFICULTY,
     DEFAULT_DIFFICULTY,
@@ -80,6 +86,7 @@ class RoundState:
     answers: dict = field(default_factory=dict)
     contested_items: list = field(default_factory=list)
     votes_cast_count: int = 0
+    voters: set = field(default_factory=set)
     scores: dict = field(default_factory=dict)
     letter: str | None = None
     validity_reports: dict = field(default_factory=dict)
@@ -620,6 +627,11 @@ def connect(auth):
     username = auth["username"]
     token = auth["token"]
 
+    if not isinstance(username, str) or not isinstance(token, str):
+        return False
+    if not username.strip() or len(username) > MAX_USERNAME_LEN:
+        raise ConnectionRefusedError("username_invalid")
+
     if is_bot(username):
         # Reserved for computer players; nobody may impersonate one.
         raise ConnectionRefusedError("username_taken")
@@ -734,6 +746,7 @@ def connect(auth):
         "modifier": modifier,
         "answer_seconds": (modifier or {}).get("seconds", ANSWER_SECONDS),
         "mode": config.get("mode", "standard"),
+        "pack": config.get("pack"),
     }
 
     ioclient.emit("restore_session", payload, to=request.sid)
@@ -814,6 +827,7 @@ def join(data):
     addToRoom(room, username)
     map_player_to_room(username, room)
 
+    emit("room_pack", {"pack": get_room_config(room).get("pack")})
     emit("player_joined", get_players(room), to=room)
     _broadcast_host(room)
     _prune_lobby_ghosts(room)
@@ -874,10 +888,26 @@ def new_room(data=None):
 
     roomID = genRoomId()
 
-    cats = data.get("categories") if data else None
-    alphabet = data.get("allowed_letters") if data else None
+    data = data if isinstance(data, dict) else {}
+    cats = clean_categories(data.get("categories"))
+    alphabet = clean_letters(data.get("allowed_letters"))
 
-    indexRoom(roomID, categories=cats, allowed_letters=alphabet)
+    pack_id = data.get("pack")
+    pack = get_pack(pack_id)
+    if pack:
+        # A pack brings its own categories, and only plays letters it has
+        # answers for.
+        cats = list(pack["categories"])
+        try:
+            rounds = int(data.get("rounds", pack["default_rounds"]))
+        except (TypeError, ValueError):
+            rounds = pack["default_rounds"]
+        rounds = max(3, min(len(pack["letters"]), rounds))
+        alphabet = "".join(random.sample(pack["letters"], rounds))
+    else:
+        pack_id = None
+
+    indexRoom(roomID, categories=cats, allowed_letters=alphabet, pack=pack_id)
 
     _leave_previous_room(username, roomID)
     join_room(roomID)
@@ -885,6 +915,8 @@ def new_room(data=None):
     addToRoom(roomID, username)
     map_player_to_room(username, roomID)
 
+    # Pack first: the client builds the invite link as soon as it has the code.
+    emit("room_pack", {"pack": pack_id})
     emit("game_code", roomID)
     _broadcast_host(roomID)
 
@@ -1209,6 +1241,7 @@ def start_game(data):
             "players": players,
             "categories": config["categories"],
             "allowed_letters": config["allowed_letters"],
+            "pack": config.get("pack"),
         },
         to=room_id,
     )
@@ -1299,7 +1332,17 @@ def letter_selected(data):
     if _is_daily(room_id):
         return  # the day's letters come from the server, in a fixed order
 
-    _begin_round(room_id, turn_player, data["letter"])
+    letter = data.get("letter")
+    if not isinstance(letter, str) or len(letter) != 1:
+        return
+    letter = letter.upper()
+    config = get_room_config(room_id)
+    if letter not in config["allowed_letters"]:
+        return
+    if letter_to_idx(letter) in (get_used_letters(room_id) or []):
+        return
+
+    _begin_round(room_id, turn_player, letter)
 
 
 def _begin_round(room_id, turn_player, letter):
@@ -1315,6 +1358,7 @@ def _begin_round(room_id, turn_player, letter):
     state.answers.clear()
     state.contested_items.clear()
     state.votes_cast_count = 0
+    state.voters.clear()
     state.answer_seconds = None
     state.modifier = _pick_modifier(room_id)
 
@@ -1342,8 +1386,11 @@ def handle_player_answer(data):
 
     if not state or state.phase != RoundPhase.ANSWERING:
         return
+    if not player or player not in (get_players(room_id) or []):
+        return
 
-    _record_answers(room_id, player, data["answers"])
+    config = get_room_config(room_id)
+    _record_answers(room_id, player, clean_answers(data.get("answers"), config["categories"]))
 
 
 def _record_answers(room_id, player, answers):
@@ -1385,6 +1432,7 @@ def process_validation(room_id):
     state.phase = RoundPhase.VALIDATING
 
     letter = state.letter
+    pack = (get_room_config(room_id) or {}).get("pack")
     contested = []
 
     # Validate every player's answers concurrently instead of one at a
@@ -1392,7 +1440,7 @@ def process_validation(room_id):
     # (up to ~2s), and doing that sequentially per player is what made
     # this screen slow with more than 1-2 players.
     jobs = {
-        player: gevent.spawn(get_answer_validity, p_answers, letter)
+        player: gevent.spawn(get_answer_validity, p_answers, letter, pack)
         for player, p_answers in state.answers.items()
     }
     gevent.joinall(list(jobs.values()), timeout=5)
@@ -1472,7 +1520,14 @@ def handle_votes(data):
     if not state or state.phase != RoundPhase.VOTING:
         return
 
-    votes = data.get("votes", {})
+    voter = get_user_from_sid(request.sid)
+    if not voter or voter in state.voters or voter not in (get_players(room_id) or []):
+        return
+    state.voters.add(voter)
+
+    votes = data.get("votes")
+    if not isinstance(votes, dict):
+        votes = {}
 
     for item_id, vote_value in votes.items():
 
@@ -1481,7 +1536,8 @@ def handle_votes(data):
             None,
         )
 
-        if item:
+        # Nobody gets a say on their own word.
+        if item and item["player"] != voter:
 
             if vote_value:
                 item["votes_yes"] += 1
@@ -1490,7 +1546,7 @@ def handle_votes(data):
 
     ioclient.emit("vote_update", state.contested_items, room=room_id)
 
-    state.votes_cast_count += 1
+    state.votes_cast_count = len(state.voters)
 
     if state.votes_cast_count >= _connected_count(room_id):
         finalize_scores(room_id)
@@ -1698,6 +1754,8 @@ def restart_game(data):
         # 2. Reset the backend game data
         config = get_room_config(room_id)
         clear_used_letters(room_id)
+        reset_scores(room_id)
+        state.scores = {}
 
         # 3. Tell everyone to jump back to the picking phase
         ioclient.emit(
@@ -1706,6 +1764,7 @@ def restart_game(data):
                 "players": players,
                 "categories": config["categories"],
                 "allowed_letters": config["allowed_letters"],
+                "pack": config.get("pack"),
             },
             to=room_id,
         )

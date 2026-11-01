@@ -1,0 +1,188 @@
+/* FlaskCon Africa look for FlaskCon rooms (?pack=flaskcon).
+   Loaded only when that mode is on; everything is scoped to
+   body.theme-flaskcon so the normal icallon look never changes.
+   Brand source: flaskcon_design/site-kit (tokens/tokens.css). */
+
+@font-face { font-family: 'Tektur'; font-weight: 900; font-display: swap; src: url('fonts/tektur-latin-900-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Urbanist'; font-weight: 400; font-display: swap; src: url('fonts/urbanist-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Urbanist'; font-weight: 600; font-display: swap; src: url('fonts/urbanist-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Urbanist'; font-weight: 800; font-display: swap; src: url('fonts/urbanist-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 400; font-display: swap; src: url('fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 600; font-display: swap; src: url('fonts/jetbrains-mono-latin-600-normal.woff2') format('woff2'); }
+
+body.theme-flaskcon {
+    --fca-night: #0B0B0C;
+    --fca-navy: #101A5C;
+    --fca-blue: #2B4BFF;
+    --fca-yellow: #F0BE32;
+    --fca-sky: #7FA8FF;
+    --fca-paper: #F7F8FC;
+    --fca-coral: #FF5A3C;
+    --fca-green: #0F9D6B;
+    --fca-violet: #6E44FF;
+    --fca-text-muted: #9AA3C7;
+    --fca-dots: radial-gradient(#25306B 1.2px, transparent 1.6px) 0 0 / 16px 16px;
+
+    /* Tailwind's "primary" reads this (see tailwind.config in index.html) */
+    --primary: 43 75 255;
+
+    background: var(--fca-dots), var(--fca-night) !important;
+    font-family: 'Urbanist', system-ui, sans-serif;
+}
+
+/* Screens are see-through so the dot grid shows */
+.theme-flaskcon .game-screen,
+.theme-flaskcon .bg-background-dark,
+.theme-flaskcon [class*="bg-background-dark/"] {
+    background-color: transparent !important;
+}
+.theme-flaskcon header[class*="bg-background-dark"] {
+    background-color: rgba(11, 11, 12, 0.9) !important;
+}
+.theme-flaskcon [class*="from-background-dark"] {
+    background-image: linear-gradient(to top, var(--fca-night) 60%, transparent) !important;
+}
+
+/* Square corners everywhere */
+.theme-flaskcon [class*="rounded"],
+.theme-flaskcon .glass-card,
+.theme-flaskcon .btn-gamy,
+.theme-flaskcon input,
+.theme-flaskcon button {
+    border-radius: 0 !important;
+}
+
+/* Headlines: Tektur, uppercase. Small labels: JetBrains Mono. */
+.theme-flaskcon h1,
+.theme-flaskcon h2,
+.theme-flaskcon h3,
+.theme-flaskcon .font-black:not(.material-symbols-outlined) {
+    font-family: 'Tektur', system-ui, sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+}
+.theme-flaskcon h1,
+.theme-flaskcon h2 {
+    text-transform: uppercase;
+}
+/* (never on icons: they need their own font) */
+.theme-flaskcon .uppercase.tracking-wider:not(.material-symbols-outlined),
+.theme-flaskcon .uppercase.tracking-widest:not(.material-symbols-outlined),
+.theme-flaskcon .text-xs.uppercase:not(.material-symbols-outlined),
+.theme-flaskcon .text-\[10px\]:not(.material-symbols-outlined) {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.theme-flaskcon .text-primary { color: var(--fca-yellow) !important; }
+
+/* Cards: navy on the night background, thin sky rule */
+.theme-flaskcon [class~="bg-slate-800"],
+.theme-flaskcon [class~="bg-slate-800/80"],
+.theme-flaskcon [class~="bg-slate-800/50"],
+.theme-flaskcon [class~="bg-slate-800/90"],
+.theme-flaskcon [class~="bg-slate-900"],
+.theme-flaskcon [class~="bg-slate-900/50"],
+.theme-flaskcon [class~="dark:bg-slate-900/80"],
+.theme-flaskcon .glass-card {
+    background-color: rgba(16, 26, 92, 0.85) !important;
+}
+.theme-flaskcon [class~="bg-slate-700"],
+.theme-flaskcon [class~="bg-slate-700/50"] {
+    background-color: #1B2A85 !important;
+}
+.theme-flaskcon [class*="border-slate-"] {
+    border-color: rgba(127, 168, 255, 0.35) !important;
+}
+
+/* Big call-to-action buttons: flat blue, hard yellow offset shadow */
+.theme-flaskcon [class*="from-primary"],
+.theme-flaskcon .btn-primary-custom {
+    background-image: none !important;
+    background-color: var(--fca-blue) !important;
+    box-shadow: 6px 6px 0 var(--fca-yellow) !important;
+    border: 2px solid var(--fca-paper) !important;
+}
+.theme-flaskcon [class*="from-primary"]:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 3px 3px 0 var(--fca-yellow) !important;
+}
+.theme-flaskcon [class*="from-primary"] > div {
+    background: transparent !important;
+    border: 0 !important;
+    backdrop-filter: none !important;
+}
+.theme-flaskcon .bg-primary {
+    background-color: var(--fca-blue) !important;
+}
+.theme-flaskcon .accent-primary { accent-color: var(--fca-yellow); }
+
+/* The orange glow blobs and soft shadows don't belong in this look */
+.theme-flaskcon [class*="blur-3xl"] { display: none !important; }
+.theme-flaskcon [class*="shadow-[0_0"]:not([class*="from-primary"]),
+.theme-flaskcon [class*="shadow-[0_10px_30px_rgba(236"],
+.theme-flaskcon [class*="hover:shadow-[0_0"]:hover:not([class*="from-primary"]) {
+    box-shadow: none !important;
+}
+
+.theme-flaskcon .icallon-toast {
+    background: var(--fca-yellow) !important;
+    color: var(--fca-navy) !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 var(--fca-blue) !important;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ---- FlaskCon-only pieces (hidden unless the theme is on) ---- */
+
+.fc-ticker {
+    background: var(--fca-yellow);
+    color: var(--fca-navy);
+    font-family: 'Tektur', system-ui, sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    transform: rotate(-2deg);
+    margin: 0 -24px;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+}
+/* The text is written twice, so sliding it left by half loops seamlessly */
+.fc-ticker span {
+    display: inline-block;
+    animation: fc-scroll 24s linear infinite;
+}
+@keyframes fc-scroll {
+    to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fc-ticker span { animation: none; }
+}
+
+.fc-outline {
+    font-family: 'Tektur', system-ui, sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--fca-yellow);
+}
+
+.fc-code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    color: var(--fca-sky);
+    font-size: 0.8rem;
+}
+
+.fc-chip {
+    display: inline-block;
+    border: 1.5px solid var(--fca-sky);
+    color: var(--fca-paper);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 4px 8px;
+}
+.fc-chip.fc-chip--theme {
+    border-color: var(--fca-yellow);
+    color: var(--fca-yellow);
+}

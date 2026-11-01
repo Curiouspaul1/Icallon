@@ -10,6 +10,7 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from nltk.corpus import words, names as nltk_names
 
 from read_writer import ReadWriteLock
+from packs import pack_word_status
 
 # Initialize datasets
 try:
@@ -149,6 +150,55 @@ def verify_and_register_user(tokens, username, incoming_token):
     return Resp(routine_resp=False)
 
 
+# --- CLIENT INPUT ---
+# Everything below comes straight from a browser and ends up on other
+# players' screens, so keep it to plain, short strings.
+
+MAX_CATEGORIES = 6
+MAX_CATEGORY_LEN = 20
+MAX_ANSWER_LEN = 40
+# The name box allows 20; a little slack for names made before that limit.
+MAX_USERNAME_LEN = 32
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def clean_categories(categories):
+    """Up to MAX_CATEGORIES distinct, trimmed names, or None for the
+    classic set."""
+    if not isinstance(categories, list):
+        return None
+    cleaned = []
+    for cat in categories:
+        if not isinstance(cat, str):
+            continue
+        cat = " ".join(cat.split())[:MAX_CATEGORY_LEN]
+        if cat and cat not in cleaned:
+            cleaned.append(cat)
+    return cleaned[:MAX_CATEGORIES] or None
+
+
+def clean_letters(letters):
+    """Distinct A-Z letters in the order given, or None for all 26."""
+    if not isinstance(letters, str):
+        return None
+    cleaned = ""
+    for ch in letters.upper():
+        if ch in ALPHABET and ch not in cleaned:
+            cleaned += ch
+    return cleaned or None
+
+
+def clean_answers(answers, categories):
+    """Only this room's categories, each a short string."""
+    if not isinstance(answers, dict):
+        return {}
+    return {
+        cat: answers[cat][:MAX_ANSWER_LEN]
+        for cat in categories
+        if isinstance(answers.get(cat), str)
+    }
+
+
 # --- SOCKET & ROOM UTILS ---
 def genRoomId():
     chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ0123456789"
@@ -171,6 +221,8 @@ def get_room_config(rooms, room_id):
                 # "standard" or "daily" (the daily challenge)
                 "mode": rooms[room_id].get("mode", "standard"),
                 "daily_date": rooms[room_id].get("daily_date"),
+                # Themed word pack id (see packs.py), or None
+                "pack": rooms[room_id].get("pack"),
             }
         )
 
@@ -196,6 +248,7 @@ def indexRoom(
     is_public=False,
     mode="standard",
     daily_date=None,
+    pack=None,
 ):
     if not categories:
         categories = ["Name", "Animal", "Place", "Thing"]
@@ -218,6 +271,7 @@ def indexRoom(
         "is_public": is_public,  # <--- NEW: Track if it's a public room
         "mode": mode,
         "daily_date": daily_date,
+        "pack": pack,
         "last_interaction": time.time(),
     }
     return Resp(file_json=rooms)
@@ -462,6 +516,15 @@ def clean_rooms():
 
 
 @execute_action(filename="rooms.json")
+def reset_scores(rooms, room_id):
+    """A rematch starts everyone back at zero."""
+    if room_id in rooms:
+        rooms[room_id]["player_to_score"] = {}
+        rooms[room_id]["round_answers"] = {}
+        return Resp(file_json=rooms)
+
+
+@execute_action(filename="rooms.json")
 def clear_used_letters(rooms, room_id):
     if room_id in rooms:
         rooms[room_id]["letters"] = []
@@ -501,7 +564,7 @@ def is_place(name):
     return result
 
 
-def get_answer_validity(answers, letter):
+def get_answer_validity(answers, letter, pack=None):
     func_mappings = {
         "Name": is_name,
         "Animal": is_animal,
@@ -522,7 +585,10 @@ def get_answer_validity(answers, letter):
             continue
 
         # 2. Category Check
-        if category in func_mappings:
+        pack_status = pack_word_status(pack, category, clean_word)
+        if pack_status:
+            report[category] = {"word": clean_word, "status": pack_status}
+        elif category in func_mappings:
             try:
                 is_valid = func_mappings[category](clean_word)
                 status = "valid" if is_valid else "needs_vote"

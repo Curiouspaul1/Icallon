@@ -20,7 +20,8 @@
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#ec5b13",
+                        // A CSS variable so a theme (e.g. FlaskCon) can swap it
+                        "primary": "rgb(var(--primary) / <alpha-value>)",
                         "background-light": "#f8f6f6",
                         "background-dark": "#221610",
                     },
@@ -42,6 +43,8 @@
 
     <!-- <link rel="stylesheet" href="main.css"> -->
     <style>
+        :root { --primary: 236 91 19; }
+
         /* Essential fallbacks for the other screens so they don't break */
         .game-screen:not(#username-screen):not(#game-selection-screen) {
             min-height: 100vh;
@@ -101,7 +104,7 @@
             </div>
 
             <div class="relative max-w-sm mx-auto w-full group">
-                <input id="username" type="text" placeholder="Enter Username..." autocomplete="off"
+                <input id="username" type="text" placeholder="Enter Username..." autocomplete="off" maxlength="20"
                     class="w-full bg-slate-900/50 border-2 border-slate-800 rounded-2xl py-4 pl-6 pr-32 focus:border-primary focus:ring-0 transition-all font-bold text-white placeholder-slate-500 shadow-inner">
 
                 <button type="button" id="submit-username"
@@ -170,6 +173,15 @@
                         <span class="material-symbols-outlined text-3xl text-white">add</span>
                     </div>
                 </div>
+            </button>
+
+            <button type="button" onclick="switchScreen('flaskcon-setup-screen')" class="flaskcon-only w-full p-6 flex items-center justify-between border-2 bg-slate-800 border-slate-600 active:scale-95 transition-all"
+                style="display: none;">
+                <div class="text-left">
+                    <h3 class="font-black text-2xl text-primary mb-1">FLASKCON ROOM</h3>
+                    <p class="fc-code">@app.route("/play")</p>
+                </div>
+                <img src="flaskcon/logo-mark-on-dark.svg" alt="" class="size-12">
             </button>
 
             <button onclick="switchScreen('quick-match-screen')"
@@ -532,6 +544,58 @@
         </div>
     </div>
 
+    <div id="flaskcon-setup-screen"
+        class="game-screen w-full min-h-screen flex flex-col relative overflow-hidden bg-background-dark text-white font-display"
+        style="display: none;">
+        <header
+            class="flex items-center justify-between p-6 bg-background-dark/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-800">
+            <button type="button" onclick="switchScreen('game-selection-screen')" aria-label="Back"
+                class="size-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-slate-700 transition-colors active:scale-95 text-slate-300">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 class="font-bold text-lg tracking-wide uppercase">FlaskCon Room</h1>
+            <div class="size-10"></div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto px-6 py-8 max-w-md w-full mx-auto flex flex-col space-y-8 pb-32">
+            <img src="flaskcon/logo-horizontal-white.png" alt="FlaskCon Africa" class="w-64 max-w-full mx-auto">
+
+            <div class="fc-ticker" aria-hidden="true"><span>Play while you wait &middot; Python &middot; Flask &middot; Lagos &middot; $ pip install friends &middot; Play while you wait &middot; Python &middot; Flask &middot; Lagos &middot; $ pip install friends &middot; </span></div>
+
+            <div class="text-center space-y-3">
+                <h2 class="text-4xl font-black text-white">Name. Animal.<br><span class="fc-outline">Python. Lagos.</span></h2>
+                <p class="text-slate-400 font-medium text-sm">Same game, FlaskCon words. Flask terms and Lagos favourites count straight away.</p>
+                <div class="flex flex-wrap justify-center gap-2 pt-1">
+                    <span class="fc-chip">Name</span>
+                    <span class="fc-chip">Animal</span>
+                    <span class="fc-chip fc-chip--theme">Python &amp; Flask</span>
+                    <span class="fc-chip fc-chip--theme">Lagos &amp; Africa</span>
+                </div>
+            </div>
+
+            <div class="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-6">
+                <div class="flex justify-between items-end">
+                    <span class="text-slate-400 font-bold uppercase tracking-wider text-sm">Total Rounds</span>
+                    <span id="flaskcon-rounds-display" class="text-5xl font-black text-primary">6</span>
+                </div>
+                <input type="range" id="flaskcon-rounds-slider" min="3" max="20" value="6" aria-label="Total rounds"
+                    class="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-primary border border-slate-600">
+                <p class="fc-code">$ pip install friends</p>
+            </div>
+        </main>
+
+        <div
+            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-12 flex justify-center pointer-events-none z-20">
+            <button type="button" id="confirm-flaskcon-btn"
+                class="pointer-events-auto max-w-md w-full flex items-center justify-center overflow-hidden relative group p-1 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-yellow-500 transition-all duration-300 active:scale-95">
+                <div class="w-full h-full p-4 flex items-center justify-center gap-2">
+                    <span class="font-black text-lg tracking-wider text-white">CREATE ROOM</span>
+                    <span class="material-symbols-outlined text-white">rocket_launch</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
     <div id="join-game-screen" class="game-screen" style="display: none;">
         <div class="glass-card">
             <h2 class="text-2xl font-bold mb-4">Join Game</h2>
@@ -558,6 +622,8 @@
         </header>
 
         <main class="flex-1 overflow-y-auto px-6 py-8 pb-32 max-w-md w-full mx-auto space-y-8">
+
+            <div class="flaskcon-only fc-ticker" aria-hidden="true" style="display: none;"><span>FlaskCon room &middot; Python &amp; Flask &middot; Lagos &amp; Africa &middot; @app.route("/play") &middot; FlaskCon room &middot; Python &amp; Flask &middot; Lagos &amp; Africa &middot; @app.route("/play") &middot; </span></div>
 
             <div
                 class="bg-slate-800/50 border border-slate-700 rounded-3xl p-6 text-center relative overflow-hidden shadow-lg">
@@ -1072,6 +1138,35 @@
             const urlParams = new URLSearchParams(window.location.search);
             let inviteCode = urlParams.get('code');
 
+            // --- Themed word packs (see packs.py on the server) ---
+            // ?pack=flaskcon opens straight into a FlaskCon room setup, in the
+            // FlaskCon look. Anyone joining a FlaskCon room gets the look too.
+            const KNOWN_PACKS = ['flaskcon'];
+            const landingPack = KNOWN_PACKS.includes(urlParams.get('pack')) ? urlParams.get('pack') : null;
+            let roomPack = null;            // pack of the room we're in, if any
+            let sentToPackSetup = false;    // open the pack screen once, not after every game
+
+            function setRoomPack(pack) {
+                roomPack = KNOWN_PACKS.includes(pack) ? pack : null;
+                applyPackTheme();
+            }
+
+            function applyPackTheme() {
+                const on = (roomPack || landingPack) === 'flaskcon';
+                if (on && !document.getElementById('flaskcon-css')) {
+                    $('head').append('<link id="flaskcon-css" rel="stylesheet" href="flaskcon/flaskcon.css">');
+                }
+                document.body.classList.toggle('theme-flaskcon', on);
+                $('.flaskcon-only').toggle(on);
+            }
+
+            function inviteLink(code) {
+                let link = `${window.location.origin}/?code=${encodeURIComponent(code)}`;
+                return roomPack ? `${link}&pack=${roomPack}` : link;
+            }
+
+            applyPackTheme();
+
             let serverURL = 'https://icallon-262474602690.africa-south1.run.app';
             // let serverURL = 'http://localhost:5000';
 
@@ -1153,17 +1248,17 @@
                     let isHostPlayer = (p === hostName);
                     let isOffline = onlinePlayers ? !onlinePlayers.includes(p) : false;
                     // Generates a unique cool avatar based on the name
-                    let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${p}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
+                    let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
 
                     let html = `
                         <div class="flex flex-col items-center gap-2 ${isOffline ? 'opacity-40' : ''}" title="${isOffline ? 'Offline' : ''}">
                             <div class="relative">
                                 <div class="w-16 h-16 rounded-full bg-slate-800 border-4 ${isMe ? 'border-primary' : 'border-slate-700'} overflow-hidden flex items-center justify-center shadow-lg">
-                                    <img src="${avatarUrl}" alt="avatar" class="w-full h-full object-cover">
+                                    <img src="${esc(avatarUrl)}" alt="avatar" class="w-full h-full object-cover">
                                 </div>
                                 ${isHostPlayer ? '<div class="absolute -bottom-1 -right-1 bg-primary size-5 rounded-full border-2 border-background-dark flex items-center justify-center"><span class="material-symbols-outlined text-[10px] text-white">star</span></div>' : ''}
                             </div>
-                            <span class="text-xs font-bold text-slate-200 truncate w-20 text-center">${p}${isOffline ? ' (offline)' : ''}</span>
+                            <span class="text-xs font-bold text-slate-200 truncate w-20 text-center">${esc(p)}${isOffline ? ' (offline)' : ''}</span>
                         </div>`;
                     $('#lobby-avatars').append(html);
                 });
@@ -1362,7 +1457,7 @@
                     let isCore = ["Name", "Animal", "Place", "Thing"].includes(cat);
                     let chip = $(`
                         <div class="flex items-center gap-1 px-3 py-1.5 rounded-full ${isCore ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-slate-700 border-slate-600 text-white'} border text-sm font-bold">
-                            ${cat}
+                            ${esc(cat)}
                             <button type="button" class="ml-1 hover:text-red-400 transition-colors" data-idx="${index}">
                                 <span class="material-symbols-outlined text-[14px]">close</span>
                             </button>
@@ -1398,6 +1493,20 @@
                 customCategories.push(val);
                 $('#new-cat-input').val('');
                 renderCategoryChips();
+            });
+
+            $('#flaskcon-rounds-slider').on('input', function () {
+                $('#flaskcon-rounds-display').text($(this).val());
+            });
+
+            $('#confirm-flaskcon-btn').off('click').on('click', function (e) {
+                e.preventDefault();
+                let rounds = parseInt($('#flaskcon-rounds-slider').val());
+                showOverlay("Creating room...");
+                if (typeof gtag === 'function') {
+                    gtag('event', 'create_room', { 'mode': 'flaskcon', 'rounds': rounds });
+                }
+                socket.emit('create', { pack: 'flaskcon', rounds: rounds });
             });
 
             $('#quick-rounds-slider').on('input', function () {
@@ -1567,10 +1676,12 @@
 
                 socket.on('connect_error', (err) => {
                     // Server explicitly refused us: retrying won't help.
-                    if (err && err.message === 'username_taken') {
+                    if (err && (err.message === 'username_taken' || err.message === 'username_invalid')) {
                         socket.disconnect();
                         hideOverlay();
-                        alert("That name is already in use. Please pick a different one.");
+                        alert(err.message === 'username_taken'
+                            ? "That name is already in use. Please pick a different one."
+                            : "Names can be up to 20 characters.");
                         $('#submit-username').prop('disabled', false).html('Ready <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>');
                         switchScreen('username-screen');
                         return;
@@ -1606,7 +1717,13 @@
                     if (isJoiningViaLink) return;
                     hideOverlay();
                     switchScreen('game-selection-screen');
+                    if (landingPack && !sentToPackSetup) {
+                        sentToPackSetup = true;
+                        switchScreen(landingPack + '-setup-screen');
+                    }
                 });
+
+                socket.on('room_pack', (data) => setRoomPack(data && data.pack));
 
                 // socket.on('connect_error', (err) => {
                 //     alert("Connection Failed. Refresh and try again.");
@@ -1628,7 +1745,7 @@
                     gameCode = code;
                     isHost = true;
                     $('#display-game-code').text(code);
-                    let joinLink = `${window.location.origin}/?code=${code}`;
+                    let joinLink = inviteLink(code);
                     let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                     $('#room-qr-code').attr('src', qrUrl);
                     $('#qr-container').fadeIn();
@@ -1750,14 +1867,14 @@
                     $('#display-game-code').text(gameCode);
                     $('#lobby-avatars').empty();
                     data.players.forEach(p => {
-                        let html = `<div class="flex flex-col items-center"><div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border-2 border-primary mb-1"><span class="material-symbols-outlined text-white">person</span></div><span class="text-xs font-bold text-white">${p}</span></div>`;
+                        let html = `<div class="flex flex-col items-center"><div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border-2 border-primary mb-1"><span class="material-symbols-outlined text-white">person</span></div><span class="text-xs font-bold text-white">${esc(p)}</span></div>`;
                         $('#lobby-avatars').append(html);
                     });
                     switchScreen('create-game-screen');
                     if (isHost) {
                         $('#start-game-button').show().prop('disabled', data.players.length < 2);
                         $('#waiting-msg').hide();
-                        let joinLink = `${window.location.origin}/?code=${gameCode}`;
+                        let joinLink = inviteLink(gameCode);
                         let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                         $('#room-qr-code').attr('src', qrUrl).parent().show();
                     } else {
@@ -1797,7 +1914,7 @@
                         $('#start-game-button').show().prop('disabled', players.length < 2);
                         $('#waiting-msg').hide();
 
-                        let joinLink = `${window.location.origin}/?code=${gameCode}`;
+                        let joinLink = inviteLink(gameCode);
                         let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                         $('#room-qr-code').attr('src', qrUrl);
                         $('#qr-container').show();
@@ -1844,6 +1961,7 @@
 
                 socket.on('game_started', (data) => {
                     gameMode = data.mode || null;
+                    setRoomPack(data.pack);
                     lastBreakdown = null;
                     activeCategories = data.categories; gameAlphabet = data.allowed_letters;
                     switchScreen('game-arena');
@@ -1918,7 +2036,7 @@
                     $('#waiting-turn-screen').hide();
 
                     $('#gameplay-top-bar').fadeIn();
-                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${letter}</span>${roundModifier ? `<span class="ml-2 text-xs font-black text-yellow-300">${esc(roundModifier.label)}</span>` : ''}`);
+                    $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${esc(letter)}</span>${roundModifier ? `<span class="ml-2 text-xs font-black text-yellow-300">${esc(roundModifier.label)}</span>` : ''}`);
 
                     $('#guessing-letter-display').text(`Letter: ${letter}`);
 
@@ -1981,6 +2099,7 @@
                     activeCategories = data.categories || [];
                     gameAlphabet = data.allowed_letters || "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                     gameMode = data.mode === 'daily' ? 'daily' : null;
+                    setRoomPack(data.pack);
 
                     $('#display-game-code').text(gameCode);
 
@@ -2007,7 +2126,7 @@
                             $('#waiting-turn-screen').hide();
 
                             $('#gameplay-top-bar').fadeIn();
-                            $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${currentLetter}</span>`);
+                            $('#turn-indicator').html(`Round Letter: <span class="text-white text-lg font-black ml-1">${esc(currentLetter)}</span>`);
                             $('#guessing-letter-display').text(`Letter: ${currentLetter}`);
 
                             // Restore whatever was already typed before this
@@ -2073,7 +2192,7 @@
                         if (isHost) {
                             $('#start-game-button').show().prop('disabled', data.players.length < 2);
                             $('#waiting-msg').hide();
-                            let joinLink = `${window.location.origin}/?code=${gameCode}`;
+                            let joinLink = inviteLink(gameCode);
                             let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinLink)}`;
                             $('#room-qr-code').attr('src', qrUrl).parent().show();
                         } else {
@@ -2090,7 +2209,7 @@
                 if (!gameCode) return;
 
                 // Construct the link correctly based on origin
-                const link = `${window.location.origin}/?code=${gameCode}`;
+                const link = inviteLink(gameCode);
 
                 navigator.clipboard.writeText(link).then(() => {
                     // Visual feedback on the button
@@ -2201,7 +2320,7 @@
 
                 // Set the specific player's data
                 $('#waiting-player-name').text(player);
-                let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
+                let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
                 $('#waiting-avatar-img').attr('src', avatarUrl);
 
                 // Use the passed-in time instead of hardcoding 10!
@@ -2311,18 +2430,18 @@
                             <div class="p-4 space-y-4">
                                 <div class="flex justify-between items-start">
                                     <div class="space-y-0.5">
-                                        <p class="text-[10px] font-bold text-primary uppercase tracking-wider">Category: ${item.category}</p>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400">by <span class="text-slate-900 dark:text-slate-200 font-semibold">${item.player}</span></p>
+                                        <p class="text-[10px] font-bold text-primary uppercase tracking-wider">Category: ${esc(item.category)}</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">by <span class="text-slate-900 dark:text-slate-200 font-semibold">${esc(item.player)}</span></p>
                                     </div>
                                     <div class="flex -space-x-2">
                                         <div class="w-8 h-8 rounded-full bg-slate-700 border-2 border-background-dark flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                                            ${initials}
+                                            ${esc(initials)}
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <div class="py-2">
-                                    <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">${item.word}</h3>
+                                    <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">${esc(item.word)}</h3>
                                 </div>
                                 
                                 <div class="flex items-center gap-2 pt-2">
@@ -2376,7 +2495,7 @@
             }
 
             function showToast(msg) {
-                let t = $(`<div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ec5b13; color:white; padding:10px 20px; border-radius:30px; z-index:9999; box-shadow:0 5px 15px rgba(0,0,0,0.4); font-weight:bold;">${msg}</div>`);
+                let t = $(`<div class="icallon-toast" style="position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ec5b13; color:white; padding:10px 20px; border-radius:30px; z-index:9999; box-shadow:0 5px 15px rgba(0,0,0,0.4); font-weight:bold;">${esc(msg)}</div>`);
                 $('body').append(t);
                 setTimeout(() => t.fadeOut(() => t.remove()), 3000);
             }
@@ -2403,7 +2522,7 @@
                             .prop('disabled', true);
 
                         btn.html(`
-                            <span class="text-3xl font-black text-slate-500 z-10">${letter}</span>
+                            <span class="text-3xl font-black text-slate-500 z-10">${esc(letter)}</span>
                             <div class="absolute inset-0 bg-black/20 rounded-full"></div>
                             <div class="absolute inset-0 flex items-center justify-center opacity-20">
                                 <span class="material-symbols-outlined text-5xl text-red-500 rotate-45">add</span>
@@ -2415,7 +2534,7 @@
                             .click(() => socket.emit('letter_selected', { letter: letter, room_id: gameCode }));
 
                         btn.html(`
-                            <span class="text-3xl font-black text-white z-10 drop-shadow-md group-hover:scale-110 transition-transform">${letter}</span>
+                            <span class="text-3xl font-black text-white z-10 drop-shadow-md group-hover:scale-110 transition-transform">${esc(letter)}</span>
                             <div class="absolute inset-0 bg-white/20 rounded-full blur-md -top-1/2 group-hover:top-0 transition-all duration-500"></div>
                         `);
                     }
@@ -2426,6 +2545,7 @@
             }
 
             window.switchScreen = function (id) {
+                if (id === 'game-selection-screen' || id === 'username-screen') setRoomPack(null);
                 $('.game-screen').hide();
                 $('#' + id).show();
             };
@@ -2509,9 +2629,9 @@
                 let borderClass = isAlert ? 'border-red-500/50' : 'border-slate-700';
 
                 let toast = $(`
-                    <div class="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] font-bold text-sm flex items-center gap-3 transform transition-all duration-300 -translate-y-10 opacity-0 border ${borderClass}">
+                    <div class="icallon-toast fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] font-bold text-sm flex items-center gap-3 transform transition-all duration-300 -translate-y-10 opacity-0 border ${borderClass}">
                         ${icon}
-                        ${msg}
+                        ${esc(msg)}
                     </div>
                 `);
 
